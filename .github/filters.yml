@@ -29,6 +29,7 @@ web:
 mobile:
   - *runner
   - 'packages/mobile/**'
+  - 'packages/github/**'
   - 'apps/mobile-benchmark/**'
   - '.github/workflows/mobile.yml'
   - '.github/actions/expo-app/**'
