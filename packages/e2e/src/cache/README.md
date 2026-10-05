@@ -28,8 +28,8 @@ conclude ─▶ staged (write | keep) ─▶ flushStagedTraces at attempt end
 | Key | `identity.ts`, `context.ts` (`claimKey`) | Which entry belongs to this step. |
 | Read | `store.ts`, `trace.ts` (`readTraceEntry`), `template.ts` (`expandTrace`) | Whether a trusted entry exists, with this call's `unique()` values filled in. |
 | Precondition | `decide.ts`, `route.ts` | Whether the app is on the screen the recording began on. |
-| Replay | `agent/replay.ts`, `relocate.ts` | Each recorded action, re-aimed at the live screen. |
-| Postcondition | `anchors.ts`, `agent/step-cache.ts` (`endStateMatches`) | Whether the replay reproduced the recorded effect, and caused it. |
+| Replay | `agent/replay.ts`, `locate.ts` | Each recorded action, re-aimed at the live screen. |
+| Postcondition | `anchors.ts`, `locate.ts`, `agent/step-cache.ts` (`endStateMatches`) | Whether the replay reproduced the recorded effect, and caused it. |
 | Write | `recorder.ts`, `agent/step-cache.ts` (`stage`, `conclude`) | What to stage: a new recording, a keep, or an eviction. |
 | Settle | `context.ts` (`flushStagedTraces`) | Which staged entries a later verification confirmed. |
 | Strict | `rekeyed.ts`, `agent/step-cache.ts` (`failIfStale`) | Whether a missing or diverging recording fails the step. |
@@ -54,6 +54,27 @@ Bump `REPLAY_POLICY_VERSION` only when an existing recording could now
 relocate to a different node than it did before. Rules that only add
 fallbacks after the exact match fails do not need a bump: an entry that
 replayed before still matches the same node first.
+
+## Locating a recorded node
+
+Every lookup the cache makes goes through one locator (`locate.ts`): a
+replayed action's target (`relocateWithFallbacks`), a node a live step saw a
+moment ago (`relocateExact`), an end-state anchor (`locatePresent`), and a
+target's place among its twins at record time (`describePosition`). Each
+splits what was recorded into identity, which node it is, and content, what
+it must read or be:
+
+- The candidates are the nodes in the recorded container (`within`) that
+  carry the content: a tapped toggle's state for a target; the value,
+  states, text, and sometimes the name for an anchor (see Anchors).
+- The identity walks the ladder below over those candidates.
+- Nodes still carrying the recorded test id veto a pick made without it,
+  whatever they read, so the same reading elsewhere is never taken for them.
+- A target needs exactly one node, or its recorded place among the same
+  count of twins. An anchor takes any match: an effect shown twice is shown.
+
+Content is never loosened. A wrong action target usually fails a later check;
+a wrong anchor pick passes the step, and nothing checks after it.
 
 ## Relocation: the ladder
 
@@ -186,7 +207,7 @@ when:
 
 1. the end route matches (`sameRoute`, polled while a navigation commits),
 2. every appeared anchor is present and every gone one is absent
-   (`deltaHolds`), compared on every anchor field, value and states included,
+   (`deltaHolds`), found by the locator with their content as recorded,
 3. no alert is on screen that was not there before and was not recorded,
 4. at least one change happened during the replay (`deltaEvidenced`),
    measured from the first screen the replay saw on its end route. An
@@ -203,8 +224,14 @@ preferred. Counts that name what they
 count (`3 records imported`) are the step's result when the step made them
 appear on its own screen, and data otherwise.
 
-Anchors deliberately do not use the relocation ladder. For a target, a
-relabeled button is still the button. For an anchor, the text is the effect.
+An anchor's content is its value and states, its text, and its name when the
+name is all it says (a text node, a button that now reads "Following"). The
+rest (role, test id, the name of a region that also has text) is identity
+and walks the ladder: a status found by its test id still counts after the
+region around it was relabeled, or after an iOS backend reports its role
+another way. An anchor whose identity is only a role (an unnamed text node),
+or whose test id the app re-minted, is matched on every field at once
+instead, with no ladder.
 
 ## Routes
 

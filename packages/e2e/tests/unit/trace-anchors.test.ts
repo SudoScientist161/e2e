@@ -334,6 +334,38 @@ describe('deltaHolds', () => {
     expect(holds([anchor], [rerendered])).toBe(true);
     expect(holds([{ role: 'listitem', testId: 'row-1a2b' }], [rerendered])).toBe(false);
   });
+
+  it('finds a status by its test id when the region around it was relabeled, and still requires what it reads', () => {
+    const anchor = { role: 'region', name: 'Save status', text: 'Saved', testId: 'save' };
+    expect(holds([anchor], [node('r', { role: 'region', name: 'Draft status', text: 'Saved', testId: 'save' })])).toBe(true);
+    expect(holds([anchor], [node('r', { role: 'region', name: 'Draft status', text: 'Saving', testId: 'save' })])).toBe(false);
+  });
+
+  it('reads the name of a node that says nothing else as its content, and keeps the node by its test id across a role change', () => {
+    const anchor = { role: 'text', name: 'Receipt attached: icon.png', testId: 'success-message' };
+    expect(holds([anchor], [node('t', { role: 'other', name: 'Receipt attached: icon.png', testId: 'success-message' })])).toBe(true);
+    expect(holds([anchor], [node('t', { role: 'text', name: 'Upload failed', testId: 'success-message' })])).toBe(false);
+  });
+
+  it('never counts the recorded reading on another node while the recorded test id is on screen reading something else', () => {
+    const anchor = { role: 'text', name: 'Saved', testId: 'save-message' };
+    const failed = node('m', { role: 'text', name: 'Save failed', testId: 'save-message' });
+    const elsewhere = node('o', { role: 'text', name: 'Saved' });
+    expect(holds([anchor], [failed, elsewhere])).toBe(false);
+    // With the test id gone, a node reading the same is a re-minted id, as before.
+    expect(holds([anchor], [elsewhere])).toBe(true);
+  });
+
+  it('sees a vanished label as gone when its control stayed and now reads otherwise, and fails when the evidence disagrees', () => {
+    const gone = { role: 'button', name: 'Choose photo', testId: 'choose-photo' };
+    expect(holds([], [node('b', { role: 'button', name: 'Change photo', testId: 'choose-photo' })], [], [gone])).toBe(true);
+    expect(holds([], [node('b', { role: 'button', name: 'Choose photo', testId: 'choose-photo' })], [], [gone])).toBe(false);
+    const pending = { role: 'status', name: 'Upload', text: 'Pending', testId: 'upload-status' };
+    const done = node('u', { role: 'status', name: 'Upload', text: 'Done', testId: 'upload-status' });
+    const stale = node('s', { role: 'status', name: 'Upload', text: 'Pending' });
+    expect(holds([], [done], [], [pending])).toBe(true);
+    expect(holds([], [done, stale], [], [pending])).toBe(false);
+  });
 });
 
 describe('deltaEvidenced', () => {

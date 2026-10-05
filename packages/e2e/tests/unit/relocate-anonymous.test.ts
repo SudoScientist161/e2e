@@ -1,7 +1,7 @@
 /** Anonymous targets: a control with only a role relocates by its place among the unnamed controls of its kind. */
 
 import { describe, expect, it } from 'vitest';
-import { describePosition, relocateExact } from '../../src/cache/relocate.ts';
+import { describePosition, relocateExact } from '../../src/cache/locate.ts';
 import { buildTraceEntry, readTraceEntry } from '../../src/cache/trace.ts';
 import type { SemanticNode } from '../../src/engine/surface.ts';
 import type { RedactedNode } from '../../src/agent/observation.ts';

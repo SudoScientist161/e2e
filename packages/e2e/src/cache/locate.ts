@@ -1,30 +1,30 @@
 /**
- * Deterministic target relocation.
+ * The cache's locator: how a recorded descriptor is found on a fresh
+ * observation. One mechanism serves every lookup the cache makes: a replayed
+ * action re-aims at its target (`relocateWithFallbacks`), a live step re-finds
+ * a node it saw a moment ago (`relocateExact`), a replay checks that the
+ * recorded end state is on screen (`locatePresent`, used by `anchors.ts`), and
+ * a recording notes where a target sits among its twins (`describePosition`).
  *
- * Re-finds a recorded target descriptor in a fresh observation: exactly one
- * node must match, or replay diverges. This is the conservative public
- * ReplayPolicy — no scoring, no fuzzy matching, no vision. A tuned policy may
- * replace it behind the same seam; the fail-closed contract (one match or
- * hand off) is not tunable.
- *
- * A replay walks a ladder (`relocateWithFallbacks`): the exact match first, then
- * fallbacks that each keep the most stable evidence the recording has left,
- * the test id before the accessible name. Every rung is still exactly one
- * match, a recorded container still holds, and two kinds of evidence that
- * point at different nodes hand off. `README.md` beside this file has the
- * whole design.
+ * A lookup splits what the recording says into identity, which node it is,
+ * and content, what that node must read or be. Candidates are the projected
+ * nodes in the recorded container that carry the content; the identity then
+ * walks a ladder: the exact match first, then fallbacks that each keep the
+ * most stable evidence the recording has left, the test id before the
+ * accessible name. Content is never loosened. Two kinds of evidence that
+ * point at different nodes, or a name match outside the nodes still carrying
+ * the recorded test id, hand off. `README.md` beside this file has the whole
+ * design.
  *
  * Candidates are compared through the same `describeTarget` projection the
  * recorder used, so redaction, whitespace collapsing, and bounding cannot
- * make a node unequal to its own recording. The matching vocabulary — which
- * tiers a descriptor is tried in, and what "equal on the recorded fields"
- * means — is exported so end anchors (`anchors.ts`) are checked by the same
- * rules and can never drift from relocation.
+ * make a node unequal to its own recording.
  */
 
 import type { RedactedNode } from '../agent/observation.ts';
 import { containerKey, describeTarget, parentsOf } from '../agent/actions.ts';
-import { TRACE_ANCHOR_STATES, type TracePosition, type TraceTargetDescriptor } from './trace.ts';
+import { collapseText } from '../internal/text.ts';
+import { bound, MAX_TRACE_DESCRIPTOR_CHARS, TRACE_ANCHOR_STATES, type TraceAnchorState, type TracePosition, type TraceTargetDescriptor } from './trace.ts';
 
 /**
  * Version of the replay/relocation policy, part of every cache key. Bumping
@@ -78,8 +78,20 @@ export type RelocationResult =
 
 export type DescriptorField = keyof TraceTargetDescriptor;
 
-/** A node's descriptor projection alongside its per-observation id. */
-interface DescribedNode {
+/** One node of an observation as every lookup compares it, computed once per observation. */
+export interface ProjectedNode {
+  readonly id: string;
+  /** The node as the recorder describes a target (`describeTarget`). */
+  readonly descriptor: TraceTargetDescriptor;
+  /** Its input value, collapsed and bounded; undefined for none and for a secure field, which is never observed. */
+  readonly value: string | undefined;
+  /** The states that are on, in `TRACE_ANCHOR_STATES` order. */
+  readonly states: readonly TraceAnchorState[];
+  readonly leaf: boolean;
+}
+
+/** A node a lookup may pick: its id and the descriptor it is compared by. */
+interface Candidate {
   readonly id: string;
   readonly descriptor: TraceTargetDescriptor;
 }
@@ -154,7 +166,7 @@ export function descriptorTiers(descriptor: TraceTargetDescriptor): readonly Tra
 }
 
 /** Every listed field the recording captured must be present and equal on the candidate. */
-export function fieldsEqual(
+function fieldsEqual(
   recorded: TraceTargetDescriptor,
   candidate: TraceTargetDescriptor,
   fields: readonly DescriptorField[],
@@ -172,26 +184,47 @@ function fieldsIdentical(
 }
 
 /**
- * Descriptor projections per observation. A replay relocates every recorded
- * action, in two tiers, against the same node map (and again per settling
- * retry), and the anchor check projects it once more, while the projection of
- * a node is a pure function of the node: it is computed once per observation
- * and shared by every lookup into it.
+ * Node projections per observation. A replay relocates every recorded
+ * action, in several tiers, against the same node map (and again per
+ * settling retry), and checks every anchor against it once per poll, while
+ * the projection of a node is a pure function of the node: it is computed
+ * once per observation and shared by every lookup into it.
  */
-const projections = new WeakMap<ReadonlyMap<string, RedactedNode>, readonly DescribedNode[]>();
+const projections = new WeakMap<ReadonlyMap<string, RedactedNode>, readonly ProjectedNode[]>();
 
-/** Projects every node of an observation the way the recorder described its targets. */
-function describeNodes(nodes: ReadonlyMap<string, RedactedNode>): readonly DescribedNode[] {
+/** Projects every node of an observation the way the recorder described its targets, in document order. */
+export function projectNodes(nodes: ReadonlyMap<string, RedactedNode>): readonly ProjectedNode[] {
   const cached = projections.get(nodes);
   if (cached !== undefined) return cached;
-  const described: DescribedNode[] = [];
+  const projected: ProjectedNode[] = [];
   for (const [id, node] of nodes) {
     const descriptor = describeTarget(node);
-    if (descriptor !== undefined) described.push({ id, descriptor });
+    if (descriptor === undefined) continue;
+    const value = node.value === undefined || node.states?.secure === true ? '' : collapseText(node.value);
+    projected.push({
+      id,
+      descriptor,
+      value: value === '' ? undefined : bound(value, MAX_TRACE_DESCRIPTOR_CHARS),
+      states: TRACE_ANCHOR_STATES.filter((state) => node.states?.[state] === true),
+      leaf: node.children === undefined || node.children.length === 0,
+    });
   }
-  projections.set(nodes, described);
-  return described;
+  projections.set(nodes, projected);
+  return projected;
 }
+
+/** One key for a set of states, the same for a recorded list and a projected one. */
+export function statesKey(states: readonly TraceAnchorState[] | undefined): string {
+  return states === undefined ? '' : states.join(',');
+}
+
+/**
+ * What a lookup returns when its identity matched: `target` asks for one
+ * node, alone or at its recorded place among the same count of twins
+ * (`pick`), since an action on a guess acts on the wrong control; `present`
+ * takes every match, since an end state shown twice is still shown.
+ */
+type LocateMode = 'target' | 'present';
 
 /**
  * Relocates one descriptor against the nodes of a fresh observation, tier by
@@ -210,16 +243,7 @@ export function relocateExact(
   descriptor: TraceTargetDescriptor,
   nodes: ReadonlyMap<string, RedactedNode>,
 ): RelocationResult {
-  const keyed = withinContainer(descriptor, nodes);
-  const result = pick(descriptor, matchingIds(descriptor, keyed));
-  if (result.kind !== 'found' || descriptor.testId === undefined) return result;
-  // The semantic tier forgives a test id the app re-minted, not one that
-  // moved: when another node still carries the recorded test id, the two
-  // kinds of evidence disagree and neither is a safe guess.
-  const holders = keyed.filter((candidate) => candidate.descriptor.testId === descriptor.testId);
-  if (holders.length === 0 || holders.some((holder) => holder.id === result.id)) return result;
-  const candidates = keyed.filter((candidate) => candidate.id === result.id || holders.includes(candidate)).map((candidate) => candidate.id);
-  return { kind: 'failed', failure: 'target-ambiguous', candidates, conflict: true };
+  return locate(descriptor, targetPool(descriptor, nodes), 'target', false);
 }
 
 /**
@@ -230,41 +254,110 @@ export function relocateExact(
  * same kind (`fallbackRungs`). The first rung that settles on one node, or
  * on the recorded place among the same count of twins, wins.
  *
- * What never loosens: a recorded container (`within`) must hold on every
- * rung, an exact match that is ambiguous diverges rather than falling back,
- * since every rung only widens it, and an anonymous control has no fallback.
- * When the test id names one node and the accessible name another, the
- * recording is evidence for both and the replay hands off.
+ * What never loosens: a recorded container (`within`) and a tapped toggle's
+ * state must hold on every rung, an exact match that is ambiguous diverges
+ * rather than falling back, since every rung only widens it, and an
+ * anonymous control has no fallback. When the test id names one node and
+ * the accessible name another, the recording is evidence for both and the
+ * replay hands off.
  */
 export function relocateWithFallbacks(
   descriptor: TraceTargetDescriptor,
   nodes: ReadonlyMap<string, RedactedNode>,
 ): RelocationResult {
-  const exact = relocateExact(descriptor, nodes);
-  if (exact.kind === 'found' || exact.failure === 'target-ambiguous') return exact;
-  const candidates = withinContainer(descriptor, nodes);
+  return locate(descriptor, targetPool(descriptor, nodes), 'target', true);
+}
+
+/**
+ * Whether a recorded identity is on screen carrying its content: some node
+ * in `pool` that `carries` the recorded content matches `identity` on the
+ * exact tiers or, with `fallbacks`, on the first fallback rung that matches
+ * any. `conflict` when the only match lies outside the nodes still carrying
+ * the recorded test id: the evidence disagrees, so the end state is neither
+ * shown nor gone. The caller compares shapes (`anchors.ts`): `pool` and
+ * `identity` are in the form it compares, and `carries` checks the content
+ * the identity leaves out.
+ */
+export function locatePresent(
+  identity: TraceTargetDescriptor,
+  pool: readonly ContentCandidate[],
+  fallbacks: boolean,
+): 'present' | 'absent' | 'conflict' {
+  const result = locate(identity, pool, 'present', fallbacks);
+  return result.kind === 'found' ? 'present' : result.failure === 'target-ambiguous' ? 'conflict' : 'absent';
+}
+
+/** A candidate with whether it carries the content the lookup asks for. */
+export interface ContentCandidate extends Candidate {
+  readonly carries: boolean;
+}
+
+/**
+ * The one lookup every caller shares. `pool` is the nodes the descriptor may
+ * be found among, each marked with whether it carries the recorded content;
+ * only those that do are matched, while the test id holders that veto a
+ * name-based pick are counted over the whole pool, so a control still
+ * carrying the recorded test id in another state or reading is evidence
+ * against picking another one.
+ */
+function locate(
+  descriptor: TraceTargetDescriptor,
+  pool: readonly ContentCandidate[],
+  mode: LocateMode,
+  fallbacks: boolean,
+): RelocationResult {
+  const candidates = pool.filter((candidate) => candidate.carries);
+  const holders = descriptor.testId === undefined ? [] : pool.filter((candidate) => candidate.descriptor.testId === descriptor.testId);
+  const choose = (ids: readonly string[]): RelocationResult => {
+    if (mode === 'target') return pick(descriptor, ids);
+    if (ids.length === 0) return NOT_FOUND;
+    return { kind: 'found', id: ids.find((id) => holders.some((holder) => holder.id === id)) ?? ids[0]! };
+  };
+  // A pick made without the test id must be one of the nodes still carrying
+  // it when there are any: the semantic tier and the name rungs forgive a
+  // test id the app re-minted, not one that moved.
+  const settle = (found: Extract<RelocationResult, { kind: 'found' }>, others: Iterable<string>): RelocationResult => {
+    const disagreeing = new Set([found.id, ...others]);
+    if (holders.length > 0 && !holders.some((holder) => holder.id === found.id)) for (const holder of holders) disagreeing.add(holder.id);
+    if (disagreeing.size === 1) return found;
+    const inOrder = pool.filter((candidate) => disagreeing.has(candidate.id)).map((candidate) => candidate.id);
+    return { kind: 'failed', failure: 'target-ambiguous', candidates: inOrder, conflict: true };
+  };
+  const exact = choose(matchingIds(descriptor, candidates));
+  if (exact.kind === 'found') return settle(exact, []);
+  if (!fallbacks || exact.failure === 'target-ambiguous') return exact;
   const picks = new Map<RungEvidence, string>();
-  let winner: { readonly id: string; readonly fallback: RelocationFallback } | undefined;
+  let winner: { readonly kind: 'found'; readonly id: string; readonly fallback: RelocationFallback } | undefined;
   for (const rung of fallbackRungs(descriptor)) {
     if (picks.has(rung.evidence)) continue;
-    const result = pick(descriptor, candidates.filter((candidate) => rung.matches(candidate.descriptor)).map((candidate) => candidate.id));
+    const result = choose(candidates.filter((candidate) => rung.matches(candidate.descriptor)).map((candidate) => candidate.id));
     if (result.kind !== 'found') continue;
     picks.set(rung.evidence, result.id);
-    winner ??= { id: result.id, fallback: rung.fallback };
+    winner ??= { kind: 'found', id: result.id, fallback: rung.fallback };
   }
-  if (winner === undefined) return { kind: 'failed', failure: 'target-not-found' };
-  // Every node still carrying the recorded test id, however many: a pick
-  // made without the test id must be one of them when there are any.
-  const holders = descriptor.testId === undefined ? [] : candidates.filter((candidate) => candidate.descriptor.testId === descriptor.testId);
-  const disagreeing = [...new Set(picks.values())];
-  if (holders.length > 0 && !holders.some((holder) => holder.id === winner.id)) {
-    disagreeing.push(...holders.map((holder) => holder.id).filter((id) => !disagreeing.includes(id)));
-  }
-  if (disagreeing.length > 1) {
-    const inOrder = candidates.filter((candidate) => disagreeing.includes(candidate.id)).map((candidate) => candidate.id);
-    return { kind: 'failed', failure: 'target-ambiguous', candidates: inOrder, conflict: true };
-  }
-  return { kind: 'found', id: winner.id, fallback: winner.fallback };
+  if (winner === undefined) return NOT_FOUND;
+  // An action needs every kind of evidence to agree. An end state shown on
+  // the node the first rung names is shown, wherever else its name reads.
+  return settle(winner, mode === 'target' ? picks.values() : []);
+}
+
+const NOT_FOUND: RelocationResult = { kind: 'failed', failure: 'target-not-found' };
+
+/**
+ * The pool a recorded target is found among: the projected nodes in its
+ * recorded container (`within`), each carrying the content when it is in the
+ * state a tapped toggle was recorded in. A recorded container key must hold:
+ * the same "Delete" in another row is a different control. Checked against
+ * the tree the candidates came from, never guessed. A toggle in the other
+ * state is not the control the recording tapped, since the tap would flip it
+ * the other way.
+ */
+function targetPool(descriptor: TraceTargetDescriptor, nodes: ReadonlyMap<string, RedactedNode>): readonly ContentCandidate[] {
+  const recorded = descriptor.states === undefined ? undefined : statesKey(descriptor.states);
+  const parents = descriptor.within === undefined ? undefined : parentsOf(nodes);
+  return projectNodes(nodes)
+    .filter((node) => parents === undefined || containerKey(node.id, nodes, parents) === descriptor.within)
+    .map((node) => ({ id: node.id, descriptor: node.descriptor, carries: recorded === undefined || statesKey(node.states) === recorded }));
 }
 
 /**
@@ -348,7 +441,7 @@ function fallbackRungs(descriptor: TraceTargetDescriptor): readonly FallbackRung
  * matches. The recorder uses the same projection to notice, before it writes a
  * target, that the description alone would not tell the target from its twins.
  */
-function matchingIds(descriptor: TraceTargetDescriptor, keyed: readonly DescribedNode[]): readonly string[] {
+function matchingIds(descriptor: TraceTargetDescriptor, keyed: readonly Candidate[]): readonly string[] {
   for (const tier of descriptorTiers(descriptor)) {
     const matches = tierMatches(tier, keyed);
     if (matches.length > 0) return matches;
@@ -356,27 +449,7 @@ function matchingIds(descriptor: TraceTargetDescriptor, keyed: readonly Describe
   return [];
 }
 
-/**
- * The candidates a descriptor may match: every projected node, or only those
- * in the recorded container. A recorded container key must hold: the same
- * "Delete" in another row is a different control. Checked against the tree
- * the candidates came from, never guessed.
- */
-function withinContainer(descriptor: TraceTargetDescriptor, nodes: ReadonlyMap<string, RedactedNode>): readonly DescribedNode[] {
-  const all = describeNodes(nodes);
-  // A tapped toggle recorded its state: one in the other state is not the
-  // control the recording tapped, since the tap would flip it the other way.
-  const recorded = descriptor.states === undefined ? undefined : descriptor.states.join(',');
-  const candidates =
-    recorded === undefined
-      ? all
-      : all.filter((candidate) => TRACE_ANCHOR_STATES.filter((state) => nodes.get(candidate.id)?.states?.[state] === true).join(',') === recorded);
-  if (descriptor.within === undefined) return candidates;
-  const parents = parentsOf(nodes);
-  return candidates.filter((candidate) => containerKey(candidate.id, nodes, parents) === descriptor.within);
-}
-
-function tierMatches(tier: TraceTargetDescriptor, candidates: readonly DescribedNode[]): string[] {
+function tierMatches(tier: TraceTargetDescriptor, candidates: readonly Candidate[]): string[] {
   if (isAnonymous(tier)) {
     return candidates
       .filter((candidate) => fieldsIdentical(tier, candidate.descriptor, IDENTITY_FIELDS_WITH_TEXT))
@@ -409,7 +482,7 @@ export function describePosition(
   // it is the only one, and described with a placeholder position to do so.
   const anonymous = isAnonymous(described);
   const probe = { ...described, ...(within === undefined ? {} : { within }), ...(anonymous ? { position: { index: 0, of: 1 } } : {}) };
-  const ids = matchingIds(probe, withinContainer(probe, nodes));
+  const ids = matchingIds(probe, targetPool(probe, nodes));
   if (ids.length < (anonymous ? 1 : 2) || ids.length > MAX_POSITIONED_TWINS) return undefined;
   const index = ids.indexOf(node.ref.id);
   return index === -1 ? undefined : { index, of: ids.length };

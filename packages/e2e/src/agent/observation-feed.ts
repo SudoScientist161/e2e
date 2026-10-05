@@ -10,7 +10,7 @@
 
 import type { SettleNote } from '../cache/recorder.ts';
 import type { SemanticNode } from '../engine/surface.ts';
-import { relocateExact } from '../cache/relocate.ts';
+import { relocateExact } from '../cache/locate.ts';
 import { TestError } from '../internal/errors.ts';
 import { isEditable } from '../internal/roles.ts';
 import type { StepAgentDetails, VisionDegradation } from '../run/steps.ts';

@@ -3,7 +3,7 @@ import type { RedactedNode } from '../../src/agent/observation.ts';
 import type { SemanticNode } from '../../src/engine/surface.ts';
 import { redacted } from '../helpers/redacted.ts';
 import { containerKey, describeAction } from '../../src/agent/actions.ts';
-import { describePosition, relocateExact } from '../../src/cache/relocate.ts';
+import { describePosition, relocateExact } from '../../src/cache/locate.ts';
 
 const identity = (text: string): string => text;
 

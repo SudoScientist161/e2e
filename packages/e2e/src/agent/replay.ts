@@ -12,7 +12,7 @@
  * divergence.
  */
 
-import { isRelocatableDescriptor, MAIN_LIST_SHARE, relocateWithFallbacks, type RelocationFailure, type RelocationResult } from '../cache/relocate.ts';
+import { isRelocatableDescriptor, MAIN_LIST_SHARE, relocateWithFallbacks, type RelocationFailure, type RelocationResult } from '../cache/locate.ts';
 import { isNodeAction, type ActionTrace, type DerivedReason, type RecordedAction, type TraceTargetDescriptor, type TraceViewport } from '../cache/trace.ts';
 import type { SemanticNode, ViewportPoint } from '../engine/surface.ts';
 import { describeTarget } from './actions.ts';

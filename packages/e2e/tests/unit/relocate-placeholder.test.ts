@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { RedactedNode } from '../../src/agent/observation.ts';
 import { redacted } from '../helpers/redacted.ts';
 import { describeTarget } from '../../src/agent/actions.ts';
-import { relocateExact } from '../../src/cache/relocate.ts';
+import { relocateExact } from '../../src/cache/locate.ts';
 
 function textbox(id: string, placeholder: string, name?: string): RedactedNode {
   return redacted({

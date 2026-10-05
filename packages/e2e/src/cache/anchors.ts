@@ -9,9 +9,10 @@
  * effect. Anchors restore the check as data: the descriptors of nodes the
  * step made appear (`endAnchors`) and of nodes it made vanish
  * (`goneAnchors`), each with the states a step sets on a control it leaves
- * on screen (a switch turned on, a field typed into). They are checked by
- * the relocation vocabulary (`relocate.ts`) with two deliberate differences:
- * every recorded field must be equal, text, value, and states included, and
+ * on screen (a switch turned on, a field typed into). They are found by the
+ * cache's one locator (`locate.ts`), split into identity and content
+ * (`anchorIn`): the identity walks the same ladder a replayed action's target
+ * does, the content (text, value, states) must read as recorded, and
  * presence is enough, uniqueness is not asked.
  *
  * A replay passes on its own only when the delta happened again: everything
@@ -24,17 +25,8 @@
  */
 
 import type { RedactedNode } from '../agent/observation.ts';
-import { describeTarget } from '../agent/actions.ts';
-import { collapseText } from '../internal/text.ts';
-import { descriptorTiers, fieldsEqual, type DescriptorField } from './relocate.ts';
-import {
-  bound,
-  MAX_TRACE_ANCHORS,
-  MAX_TRACE_DESCRIPTOR_CHARS,
-  TRACE_ANCHOR_STATES,
-  type TraceAnchorState,
-  type TraceTargetDescriptor,
-} from './trace.ts';
+import { descriptorTiers, isRelocatableDescriptor, locatePresent, projectNodes, statesKey, type DescriptorField, type ProjectedNode } from './locate.ts';
+import { MAX_TRACE_ANCHORS, type TraceTargetDescriptor } from './trace.ts';
 
 /** The two sides of one step's delta, each projected, deduplicated, ordered, and capped. */
 export interface StepDelta {
@@ -51,12 +43,9 @@ export interface RecordedDelta {
 }
 
 /**
- * Every field an anchor records. Unlike target relocation, text is never
- * optional here: for a target, text is a fallback identity and a relabeled
- * button is still the button, but for an anchor the text *is* the effect (a
- * status reading "saved" rather than "empty"), so a looser match would pass a
- * step whose save never took. The structural selector is left out — anchors
- * ask whether an effect is visible, never where it sits in the document.
+ * Every field an anchor records. The structural selector is left out:
+ * anchors ask whether an effect is visible, never where it sits in the
+ * document.
  */
 const ANCHOR_FIELDS: readonly DescriptorField[] = ['role', 'name', 'text', 'testId', 'placeholder', 'inputPurpose'];
 
@@ -103,12 +92,13 @@ export function describeDelta(
   const endKeys = new Set(end.map((anchor) => anchor.key));
   return {
     appeared: deltaSide(end, start, (anchor) => startKeys.has(anchor.key), routeMoved),
-    gone: deltaSide(start, end, (anchor) => endKeys.has(anchor.key) || anchorIn(anchor.descriptor, end), routeMoved),
+    gone: deltaSide(start, end, (anchor) => endKeys.has(anchor.key) || anchorIn(anchor.descriptor, end) !== 'absent', routeMoved),
   };
 }
 
 /** One projected anchor with the node it came from. */
 interface AnchorNode {
+  readonly id: string;
   readonly descriptor: TraceTargetDescriptor;
   /** The descriptor as anchors are compared (`anchorShape`), computed once per node. */
   readonly shape: TraceTargetDescriptor;
@@ -282,14 +272,14 @@ export function deltaHolds(
 ): boolean {
   const live = projectAnchors(nodes);
   const appeared = delta.endAnchors ?? [];
-  if (!appeared.every((anchor) => anchorIn(anchor, live))) return false;
-  if ((delta.goneAnchors ?? []).some((anchor) => anchorIn(anchor, live))) return false;
+  if (!appeared.every((anchor) => anchorIn(anchor, live) === 'present')) return false;
+  if ((delta.goneAnchors ?? []).some((anchor) => anchorIn(anchor, live) !== 'absent')) return false;
   const before = projectAnchors(beforeNodes).filter((anchor) => isAlert(anchor.descriptor));
   return live.every(
     (anchor) =>
       !isAlert(anchor.descriptor) ||
-      before.some((earlier) => anchorIn(anchor.descriptor, [earlier])) ||
-      appeared.some((recorded) => anchorIn(recorded, [anchor])),
+      before.some((earlier) => anchorIn(anchor.descriptor, [earlier]) === 'present') ||
+      appeared.some((recorded) => anchorIn(recorded, [anchor]) === 'present'),
   );
 }
 
@@ -327,8 +317,8 @@ export function deltaEvidenced(
   const counted = (anchor: TraceTargetDescriptor) => !outcome || !echoes(anchor);
   const baseline = projectAnchors(baselineNodes);
   return (
-    appeared.some((anchor) => counted(anchor) && !anchorIn(anchor, baseline)) ||
-    gone.some((anchor) => counted(anchor) && anchorIn(anchor, baseline))
+    appeared.some((anchor) => counted(anchor) && anchorIn(anchor, baseline) === 'absent') ||
+    gone.some((anchor) => counted(anchor) && anchorIn(anchor, baseline) === 'present')
   );
 }
 
@@ -339,26 +329,51 @@ function identityKey(descriptor: TraceTargetDescriptor): string {
 }
 
 /**
- * Whether some tier of a recorded anchor equals some projected node on every
- * anchor field, and on its value and states exactly: an empty field is not
- * the field filled in, nor an unchecked switch the switch turned on. An
- * anchor is compared by its shape (`anchorShape`).
+ * Whether a recorded anchor is on `nodes`: `present` when a node it
+ * identifies carries its content, `conflict` when the only such node lies
+ * outside the nodes still carrying its test id, so the evidence disagrees
+ * and the anchor is neither shown nor gone. Both sides are compared by shape
+ * (`anchorShape`).
+ *
+ * Content is what the step set: the value and states exactly, the text, and
+ * the name when it is all the node says (a text node, a button that now
+ * reads "Following"). The rest is identity and is found with the ladder a
+ * replayed action uses: a region relabeled since the recording still holds
+ * the status it reported, and a test id keeps its node through a role a
+ * platform reports another way. An identity with nothing left to find it by,
+ * an unnamed text node, and a test id the app re-minted, fall back to
+ * matching every field at once, with no ladder.
  */
-function anchorIn(anchor: TraceTargetDescriptor, nodes: readonly AnchorNode[]): boolean {
-  const states = statesKey(anchor.states);
-  return descriptorTiers(anchor).some((tier) => {
-    const recorded = anchorShape(tier);
-    return nodes.some(
-      (node) =>
-        node.descriptor.value === anchor.value && statesKey(node.descriptor.states) === states && fieldsEqual(recorded, node.shape, ANCHOR_FIELDS),
-    );
-  });
+function anchorIn(anchor: TraceTargetDescriptor, nodes: readonly AnchorNode[]): 'present' | 'absent' | 'conflict' {
+  const recorded = anchorShape(anchor);
+  const { value: _value, states: _states, text, ...identity } = recorded;
+  const nameIsContent = text === undefined && anchor.value === undefined && anchor.states === undefined;
+  const pool = (withName: boolean) => nodes.map((node) => ({ id: node.id, descriptor: node.shape, carries: carries(recorded, node, withName) }));
+  if (nameIsContent && identity.name !== undefined) {
+    const { name: _name, ...unnamed } = identity;
+    const found = isRelocatableDescriptor(unnamed) ? locatePresent(unnamed, pool(true), true) : 'absent';
+    if (found !== 'absent') return found;
+  } else if (isRelocatableDescriptor(identity)) {
+    const found = locatePresent(identity, pool(false), true);
+    if (found !== 'absent') return found;
+  }
+  return locatePresent(text === undefined ? identity : { ...identity, text }, pool(false), false);
+}
+
+/** Whether a projected node reads what a recorded anchor recorded: its value and states exactly, its text and, `withName`, its name by shape. */
+function carries(recorded: TraceTargetDescriptor, node: AnchorNode, withName: boolean): boolean {
+  return (
+    node.descriptor.value === recorded.value &&
+    statesKey(node.descriptor.states) === statesKey(recorded.states) &&
+    (recorded.text === undefined || node.shape.text === recorded.text) &&
+    (!withName || node.shape.name === recorded.name)
+  );
 }
 
 /**
- * Anchor projections per observation: a replay checks the same end screen
- * once per poll and the start screen for every check, while the projection
- * of a node is a pure function of the node.
+ * Anchor projections per observation, derived from the locator's own
+ * (`projectNodes`): a replay checks the same end screen once per poll and
+ * the start screen for every check.
  */
 const projections = new WeakMap<ReadonlyMap<string, RedactedNode>, readonly AnchorNode[]>();
 
@@ -367,34 +382,27 @@ function projectAnchors(nodes: ReadonlyMap<string, RedactedNode>): readonly Anch
   const cached = projections.get(nodes);
   if (cached !== undefined) return cached;
   const anchors: AnchorNode[] = [];
-  for (const node of nodes.values()) {
+  for (const node of projectNodes(nodes)) {
     const descriptor = anchorDescriptor(node);
     if (descriptor === undefined) continue;
     // Keyed by its shape: an alert whose countdown ticked while the step ran,
     // or a clock, stayed on screen and is on neither side of the delta.
     const shape = anchorShape(descriptor);
-    anchors.push({ descriptor, shape, key: anchorKey(shape), leaf: node.children === undefined || node.children.length === 0 });
+    anchors.push({ id: node.id, descriptor, shape, key: anchorKey(shape), leaf: node.leaf });
   }
   projections.set(nodes, anchors);
   return anchors;
 }
 
 /** One node's anchor projection, or undefined when it could identify nothing. */
-function anchorDescriptor(node: RedactedNode): TraceTargetDescriptor | undefined {
-  const described = describeTarget(node);
-  if (described === undefined || descriptorTiers(described).length === 0) return undefined;
-  const { selector: _selector, ...anchor } = described;
-  const states: TraceAnchorState[] = TRACE_ANCHOR_STATES.filter((state) => node.states?.[state] === true);
-  const value = node.value === undefined || node.states?.secure === true ? '' : collapseText(node.value);
+function anchorDescriptor(node: ProjectedNode): TraceTargetDescriptor | undefined {
+  if (descriptorTiers(node.descriptor).length === 0) return undefined;
+  const { selector: _selector, ...anchor } = node.descriptor;
   return {
     ...anchor,
-    ...(value === '' ? {} : { value: bound(value, MAX_TRACE_DESCRIPTOR_CHARS) }),
-    ...(states.length === 0 ? {} : { states }),
+    ...(node.value === undefined ? {} : { value: node.value }),
+    ...(node.states.length === 0 ? {} : { states: node.states }),
   };
-}
-
-function statesKey(states: readonly TraceAnchorState[] | undefined): string {
-  return states === undefined ? '' : states.join(',');
 }
 
 /**

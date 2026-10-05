@@ -11,7 +11,7 @@
 import path from 'node:path';
 import type { CacheStrictSource, ResolvedCacheConfig } from '../config/resolve.ts';
 import { canonicalJson } from '../internal/ids.ts';
-import { REPLAY_POLICY_VERSION } from './relocate.ts';
+import { REPLAY_POLICY_VERSION } from './locate.ts';
 import {
   buildTraceCacheKey,
   createCallIndexer,

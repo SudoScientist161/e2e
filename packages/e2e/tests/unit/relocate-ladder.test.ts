@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SemanticNode } from '../../src/engine/surface.ts';
 import { redactedNodes } from '../helpers/redacted.ts';
-import { relocateExact, relocateWithFallbacks } from '../../src/cache/relocate.ts';
+import { relocateExact, relocateWithFallbacks } from '../../src/cache/locate.ts';
 import type { TraceTargetDescriptor } from '../../src/cache/trace.ts';
 
 function node(id: string, fields: Omit<SemanticNode, 'ref'>): SemanticNode {
@@ -187,5 +187,14 @@ describe('relocateWithFallbacks', () => {
     expect(relocateWithFallbacks(on, unchecked)).toEqual({ kind: 'failed', failure: 'target-not-found' });
     // A label that spells the state (`✓, Mushrooms`) changes with it; the test id rung still holds the state.
     expect(relocateWithFallbacks({ ...on, name: '✓, Mushrooms' }, unchecked)).toEqual({ kind: 'failed', failure: 'target-not-found' });
+  });
+
+  it('counts the toggle still carrying the recorded test id against a name match, whatever state it is in', () => {
+    const on: TraceTargetDescriptor = { role: 'checkbox', name: 'Mushrooms', testId: 'topping-mushrooms', states: ['checked'] };
+    const nodes = redactedNodes([
+      node('a', { role: 'checkbox', name: 'Mushroom sauce', testId: 'topping-mushrooms', states: { checked: false } }),
+      node('b', { role: 'checkbox', name: 'Mushrooms', states: { checked: true } }),
+    ]);
+    expect(relocateWithFallbacks(on, nodes)).toEqual({ kind: 'failed', failure: 'target-ambiguous', candidates: ['a', 'b'], conflict: true });
   });
 });

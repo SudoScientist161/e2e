@@ -18,7 +18,7 @@ import { resolveNavigationUrl } from '../internal/urls.ts';
 import type { JsonValue, Momentum, ScrollDirection, Secret } from '../types.ts';
 import { PROJECT_TOOL_EVENT_PREFIX, type GrammarActionName } from './action-names.ts';
 import { containerKey, describeAction, type Placement, type RecordableAction } from './actions.ts';
-import { describePosition } from '../cache/relocate.ts';
+import { describePosition } from '../cache/locate.ts';
 import type { NodeActionName, PointActionName, RecordedAction } from '../cache/trace.ts';
 import { derivedReason } from './derived.ts';
 import { AgentError } from './error.ts';

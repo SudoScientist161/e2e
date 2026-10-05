@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { describeAction } from '../../src/agent/actions.ts';
-import { describePosition, relocateExact } from '../../src/cache/relocate.ts';
+import { describePosition, relocateExact } from '../../src/cache/locate.ts';
 import { buildTraceEntry, readTraceEntry, type ActionTrace } from '../../src/cache/trace.ts';
 import type { SemanticNode } from '../../src/engine/surface.ts';
 import type { RedactedNode } from '../../src/agent/observation.ts';

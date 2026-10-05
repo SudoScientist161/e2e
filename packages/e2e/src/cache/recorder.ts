@@ -18,7 +18,7 @@
 
 import { describeAction, type DescribedAction, type RecordableAction } from '../agent/actions.ts';
 import type { RedactedNode } from '../agent/observation.ts';
-import { isRelocatableDescriptor } from './relocate.ts';
+import { isRelocatableDescriptor } from './locate.ts';
 import {
   bound,
   DESCRIPTOR_FIELDS,
