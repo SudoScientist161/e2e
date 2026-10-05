@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AppError } from 'agent-device';
 import { EngineError, TestError, type OperationContext, type SemanticNode } from 'e2e/engine';
-import { isRunnerFailure, isSnapshotPresentationFailure, staleOr, translateError } from '../../src/errors.ts';
+import { isRunnerFailure, isSnapshotPresentationFailure, refusedOr, translateError } from '../../src/errors.ts';
 import { SETTINGS_SNAPSHOT } from '../helpers/fake-client.ts';
 import { boot, harness, PROJECT_ROOT, type Harness } from '../helpers/harness.ts';
 import { noSecrets } from '../helpers/secrets.ts';
@@ -14,7 +14,7 @@ describe('error translation', () => {
     const engine = new EngineError('NOT_ACTIONABLE', 'no', { retryable: false });
     expect(translateError(engine, 'perform')).toBe(engine);
     const runner = new TestError('POLICY_DENIED', 'no');
-    expect(staleOr(runner, 'perform')).toBe(runner);
+    expect(refusedOr(runner, 'perform')).toBe(runner);
   });
 
   it('maps a missing session to INVALID_STATE and unsupported operations to UNSUPPORTED_CAPABILITY', () => {
@@ -77,13 +77,27 @@ describe('error translation', () => {
     ['ref_frame_expired', 'Ref @e12 belongs to an expired ref frame — a device action since the snapshot invalidated it', 'unknown'],
   ] as const)('maps the stale-ref refusal %s (dispatched: %s) to retryable NODE_STALE', (reason, text, dispatched) => {
     const refused = new AppError('COMMAND_FAILED', text, { reason, dispatched });
-    expect(staleOr(refused, 'perform tap')).toMatchObject({ code: 'NODE_STALE', retryable: true, message: `perform tap: ${text}` });
+    expect(refusedOr(refused, 'perform tap')).toMatchObject({ code: 'NODE_STALE', retryable: true, message: `perform tap: ${text}` });
     // Outside an action path the same refusal stays an engine failure.
     expect(translateError(refused, 'observe')).toMatchObject({ code: 'ENGINE_FAILURE' });
   });
 
+  it.each([
+    ['covered_by_interactive_descendants', 'Ref @e57 has no parent-owned touch point outside its interactive descendants'],
+    ['target_covered', 'Ref @e57 is covered by another element'],
+    ['target_bounds_invalid', 'Ref @e57 has no visible bounds'],
+  ] as const)('maps the untouchable-target refusal %s to NOT_ACTIONABLE, keeping the hint', (reason, text) => {
+    const refused = new AppError('COMMAND_FAILED', text, { reason, dispatched: 'no', hint: 'Tap the specific interactive child you intend.' });
+    expect(refusedOr(refused, 'perform tap')).toMatchObject({
+      code: 'NOT_ACTIONABLE',
+      retryable: false,
+      message: `perform tap: ${text} Hint: Tap the specific interactive child you intend.`,
+    });
+    expect(translateError(refused, 'observe')).toMatchObject({ code: 'ENGINE_FAILURE' });
+  });
+
   it('maps the rest to ENGINE_FAILURE with the text, a ref named in a message without a stale reason included', () => {
-    expect(staleOr(new Error('ref @e12 not found in the current snapshot'), 'perform tap')).toMatchObject({
+    expect(refusedOr(new Error('ref @e12 not found in the current snapshot'), 'perform tap')).toMatchObject({
       code: 'ENGINE_FAILURE',
       retryable: false,
     });

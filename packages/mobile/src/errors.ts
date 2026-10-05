@@ -83,6 +83,18 @@ const STALE_REF_REASONS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * The `details.reason` values agent-device refuses a press with when the
+ * target offers no point to touch: its bounds are empty or off screen, it is
+ * covered by another node, or its interactive children cover all of it. Each
+ * is raised while resolving the touch point, before the gesture.
+ */
+const UNTOUCHABLE_TARGET_REASONS: ReadonlySet<string> = new Set([
+  'target_bounds_invalid',
+  'target_covered',
+  'covered_by_interactive_descendants',
+]);
+
+/**
  * What the iOS automation runner reported about itself, by the code
  * agent-device emits for it: `RUNNER_WEDGED` at the top level, `RUNNER_BUSY`
  * and `MAIN_THREAD_TIMEOUT` in `details.runnerErrorCode` under
@@ -246,17 +258,22 @@ export async function runCommand<T>(label: string, work: () => Promise<T>, signa
 }
 
 /**
- * Like translateError, but a ref agent-device refused as stale becomes
- * retryable `NODE_STALE`: nothing was dispatched, so the harness may
- * re-observe and re-resolve the node instead of failing the action. Keyed on
+ * Like translateError, but an action agent-device refused before sending any
+ * input says so: a ref refused as stale becomes retryable `NODE_STALE`, so
+ * the harness may re-observe and re-resolve the node instead of failing the
+ * action, and a target it found no touch point on becomes `NOT_ACTIONABLE`,
+ * with agent-device's hint, so the model taps the child it meant. Keyed on
  * the reason alone: agent-device marks a drag's stale ref `dispatched:
  * 'unknown'` although it refuses it before the gesture.
  */
-export function staleOr(cause: unknown, operation: string, where?: string): Error {
+export function refusedOr(cause: unknown, operation: string, where?: string): Error {
   if (isClassified(cause)) return cause;
   const { reason } = details(cause);
   if (typeof reason === 'string' && STALE_REF_REASONS.has(reason)) {
     return new EngineError('NODE_STALE', `${operation}: ${message(cause)}`, { retryable: true, cause });
+  }
+  if (typeof reason === 'string' && UNTOUCHABLE_TARGET_REASONS.has(reason)) {
+    return new EngineError('NOT_ACTIONABLE', `${operation}: ${withHint(cause, message(cause))}`, { retryable: false, cause });
   }
   return translateError(cause, operation, where);
 }

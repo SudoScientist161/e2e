@@ -44,7 +44,7 @@ import {
   ConfigurationError,
   TestError,
 } from 'e2e/engine';
-import { isNoSessionApp, isSnapshotPresentationFailure, runCommand, staleOr } from './errors.ts';
+import { isNoSessionApp, isSnapshotPresentationFailure, runCommand, refusedOr } from './errors.ts';
 import { pointerInteraction, DEFAULT_LONG_PRESS_MS } from './actions.ts';
 import { resolveExpression } from './locate.ts';
 import {
@@ -1198,7 +1198,7 @@ export class AgentDeviceSurface {
     try {
       await raceAbort(() => this.track(run()), operation.signal, label);
     } catch (cause) {
-      throw staleOr(cause, label, this.where);
+      throw refusedOr(cause, label, this.where);
     }
     this.markAction(before);
   }
