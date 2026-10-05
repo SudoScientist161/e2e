@@ -674,6 +674,35 @@ describe('StepTraceSession', () => {
     expect(session.cacheInfo?.mode).toBe('self-finalized');
   });
 
+  it('waits for the screen the recording began on when the step starts before the app gets there', async () => {
+    const pay: SemanticNode = { ref: { id: 'p', revision: 'r1' }, role: 'button', name: 'Pay' };
+    let looks = 0;
+    let paid = false;
+    const host: StepCacheHost = {
+      ...makeHost([]),
+      remainingMs: () => 60_000,
+      // A sheet the app presents once a request returns: two looks before it arrives.
+      observe: async () => {
+        looks += 1;
+        return { kind: 'semantic', nodes: nodeMap(paid ? [savedMarker] : [pay]), viewport: { width: 1280, height: 720 }, path: looks <= 2 ? '/loading' : '/checkout' };
+      },
+      actions: {
+        tap: async () => {
+          paid = true;
+        },
+      } as unknown as ExecutorActions,
+    };
+    const context = entryContext({
+      startPath: '/checkout',
+      endPath: '/checkout',
+      endAnchors: [savedAnchor],
+      actions: [{ name: 'tap', summary: 'tap button "Pay"', target: { role: 'button', name: 'Pay' } }],
+    });
+    const session = makeSession(context, host);
+    expect((await session.begin())?.status).toBe('passed');
+    expect(session.cacheInfo).toMatchObject({ mode: 'self-finalized', replayedActions: 1 });
+  });
+
   it('refuses to self-finalize when the recorded end path no longer matches', async () => {
     const context = entryContext({ endPath: '/customers' });
     // Start path read, then the post-replay end check landing elsewhere.

@@ -27,6 +27,7 @@ import type { RecordableAction } from './actions.ts';
 import { AgentError, isAgentError, isModelUnreachable } from './error.ts';
 import { isRuntimeHardStop, type ReplayedPrefix, type StepVerdict } from './executor.ts';
 import {
+  awaitStartRoute,
   replayTrace,
   verifyEndState,
   type ObservedNodes,
@@ -405,13 +406,21 @@ export class StepTraceSession {
    * capturing the same screen again.
    */
   private async replayEntry(entry: TraceEntry): Promise<StepVerdict | undefined> {
-    const start = await this.captureStart('replay-start');
+    let start = await this.captureStart('replay-start');
     const trace = entry.payload;
     if (!this.host.traceEligible) {
       this.info = this.missed('truncated', trace.actions.length);
       return undefined;
     }
-    const decision = decideTraceReplay(entry, this.startPath);
+    let decision = decideTraceReplay(entry, this.startPath);
+    if (decision.action === 'miss' && decision.reason === 'wrong-context' && trace.startPath !== undefined && start?.kind === 'semantic') {
+      // The look that saw the route arrive may be mid-presentation; the
+      // replay starts from a capture that settled on it, like any start.
+      if (await awaitStartRoute(this.host, trace.startPath, start)) {
+        start = await this.captureStart('replay-start');
+        decision = decideTraceReplay(entry, this.startPath);
+      }
+    }
     if (decision.action === 'miss') {
       this.info = this.missed(decision.reason, trace.actions.length);
       return undefined;

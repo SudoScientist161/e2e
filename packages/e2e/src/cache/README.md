@@ -244,6 +244,11 @@ record (uuids, hex and digit runs, long mixed tokens, prefixed ids like
 (`<bundle id> / <title>`) is not a URL; its words follow the segment rules,
 so `Order 48213` and `Order 48214` are one screen.
 
+A replay starts only on the route its recording began on. A step that begins
+on another one waits for it on the settling backoff (`awaitStartRoute`)
+before it misses as `wrong-context`: the app may still be on its way there,
+a payment sheet it presents once a request returns.
+
 ## `unique()` templates
 
 A value marked `unique()` is a slot: the key digests a placeholder

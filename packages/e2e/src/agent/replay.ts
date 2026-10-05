@@ -13,6 +13,7 @@
  */
 
 import { isRelocatableDescriptor, MAIN_LIST_SHARE, relocateWithFallbacks, type RelocationFailure, type RelocationResult } from '../cache/locate.ts';
+import { sameRoute } from '../cache/route.ts';
 import { isNodeAction, type ActionTrace, type DerivedReason, type RecordedAction, type TraceTargetDescriptor, type TraceViewport } from '../cache/trace.ts';
 import type { SemanticNode, ViewportPoint } from '../engine/surface.ts';
 import { describeTarget } from './actions.ts';
@@ -504,6 +505,28 @@ export async function verifyEndState(
       if (holds(screen)) return true;
     }
     return false;
+  } catch (cause) {
+    if (isReplayFatal(cause, host.signal)) throw cause;
+    return false;
+  }
+}
+
+/**
+ * Waits on the settling backoff for the route a recording began on, from
+ * `initial`, the step's start capture that showed another one. A step can
+ * begin while the app is still on its way to that screen, a payment sheet
+ * it presents once a request returns, and the recording began after it
+ * arrived: that is a wait, not another context. False once the backoff runs
+ * out.
+ */
+export async function awaitStartRoute(host: ReplayHost, startPath: string, initial: SemanticScreen): Promise<boolean> {
+  try {
+    const arrived = await pollSettled(
+      host,
+      (screen) => (screen.path !== undefined && sameRoute(startPath, screen.path) ? true : undefined),
+      { kind: 'in-hand', screen: initial },
+    );
+    return arrived === true;
   } catch (cause) {
     if (isReplayFatal(cause, host.signal)) throw cause;
     return false;
