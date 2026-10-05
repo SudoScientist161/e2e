@@ -2,6 +2,7 @@
 title: Kernel browsers
 sidebarTitle: Kernel
 description: Run web targets in Kernel's hosted Chromium with the kernel() browser provider from @e2e-dev/kernel.
+icon: "/images/icons/kernel.svg"
 ---
 
 `kernel()` from `@e2e-dev/kernel` is a
@@ -60,7 +61,7 @@ web({
 ```
 
 Each attempt's window then opens maximized, and the page
-[fills it](/viewports#fill-the-window): 1920 by 993 on a 1920 by 1080 screen,
+[fills it](/web#fill-the-window): 1920 by 993 on a 1920 by 1080 screen,
 after the tab strip and address bar. With a fixed web `viewport`, the page is
 emulated at that size inside a smaller window, so Kernel's live view shows it
 cut off or in part of the window.

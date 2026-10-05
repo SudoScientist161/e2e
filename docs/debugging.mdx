@@ -1,6 +1,7 @@
 ---
 title: Debugging a run
 description: Read the report, open the evidence, watch the browser, and see what the model was sent.
+icon: "magnifying-glass"
 ---
 
 Start with the failure in the terminal. Every run also writes
@@ -273,13 +274,13 @@ large raw JSON file.
 
 Replayed steps make no model call and leave no AI trace. Add `--no-cache`
 when you need to inspect the whole flow or rule out a stale recording. See
-[Caching agent steps](/cache).
+[Caching](/cache).
 
 ## Common errors
 
 | Code | Usual cause | Fix |
 | --- | --- | --- |
-| `APP_UNREACHABLE` | Nothing answers at `app.url`, or `app.command` never became ready; on a device, the message may name the iOS automation runner instead (busy, wedged, or a snapshot it could not present) | Set `app.command.log` and read it; check the port; raise `app.command.startupTimeout`. For the runner, follow the recovery in the message: `npx agent-device daemon stop`, reboot the simulator (see [Testing iOS and Android](/mobile#troubleshooting)) |
+| `APP_UNREACHABLE` | Nothing answers at `app.url`, or `app.command` never became ready; on a device, the message may name the iOS automation runner instead (busy, wedged, or a snapshot it could not present) | Set `app.command.log` and read it; check the port; raise `app.command.startupTimeout`. For the runner, follow the recovery in the message: `npx agent-device daemon stop`, reboot the simulator (see [Mobile](/mobile#troubleshooting)) |
 | `APP_ALREADY_RUNNING` | Something already serves `app.url` when the runner wanted to start `app.command` | Stop it, or set `reuseExisting: true` for local runs |
 | `LOCATOR_NOT_FOUND` | Wrong role or name, text not exact, element inside an iframe, page not open | Read the markup for the accessible name; try `exact: false`; `browser.frameLocator` for iframes; `--headed` to look |
 | `LOCATOR_AMBIGUOUS` | Two matches: a hidden duplicate, a repeated label | Add `{ name }`, scope under a container, `filter`, `first()`, or `{ visible: true }` |

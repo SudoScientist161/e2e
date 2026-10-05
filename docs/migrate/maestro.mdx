@@ -1,6 +1,7 @@
 ---
 title: From Maestro
 description: Move Maestro flows to TypeScript with locators, assertions, and agent goals.
+icon: "/images/icons/maestro.svg"
 ---
 
 import { SetupPrompt } from '../snippets/setup-prompt-card.jsx';
@@ -190,7 +191,7 @@ declares `requires: ['device']` so other targets skip it. `Status` is `same`,
 | `optional: true` on a command | the same `isVisible()` check | renamed |
 | `repeat: { times: n }`, `repeat: { while }` | a `for` or `while` loop | renamed |
 | `runScript`, `evalScript`, `${output.x}` | TypeScript in the test | renamed |
-| `http.get`, `http.post`, `json()` | Node `fetch`, see [Testing APIs](/api-testing) | renamed |
+| `http.get`, `http.post`, `json()` | Node `fetch`, see [API](/api-testing) | renamed |
 | `onFlowStart`, `onFlowComplete` | `beforeEach`, `afterEach` | renamed |
 | `startRecording`, `stopRecording` | `test('x', { video: 'on' }, ...)` records that test's whole attempts, on a device the mobile engine records; no start and stop inside a test | renamed |
 
@@ -243,10 +244,10 @@ Start with a flow whose `optional` steps and `runFlow: { when }` branches
 often need updating.
 
 <CardGroup cols={2}>
-  <Card title="Testing iOS and Android" icon="mobile-screen" href="/mobile">
+  <Card title="Mobile" icon="mobile-screen" href="/mobile">
     Configure your app and devices.
   </Card>
-  <Card title="Goals" icon="pen-to-square" href="/goals">
-    Write test steps as goals instead of scripted selectors.
+  <Card title="Core concepts" icon="pen-to-square" href="/core-concepts">
+    Goals, assertions, and locators instead of scripted selectors.
   </Card>
 </CardGroup>

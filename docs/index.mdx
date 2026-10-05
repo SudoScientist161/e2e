@@ -1,6 +1,7 @@
 ---
 title: Introduction
 description: Open source AI testing for web and mobile apps. Spend less time on tests and more time building.
+icon: "house"
 ---
 
 import { VideoCard } from './snippets/video-card.jsx';
@@ -9,9 +10,9 @@ e2e is a next-generation testing framework for web and mobile
 apps, built to keep up with the speed we ship software today.
 
 You choose how agentic each test is: fully deterministic with
-[locators](/locators) and
+[locators](/core-concepts#locators) and
 [assertions](/reference/expect#locator-matchers), fully driven by an agent
-from [goals](/goals) in natural language, or a mix of
+from [goals](/core-concepts#goals) in natural language, or a mix of
 both in the same test.
 
 <VideoCard
@@ -49,7 +50,7 @@ you shipped.
 ## How it works
 
 - **Targets.** Each test runs once per target, such as Chromium or an iPhone
-  simulator. The [web engine](/starting-your-app) drives browsers through
+  simulator. The [web engine](/web) drives browsers through
   Playwright, the [mobile engine](/mobile) drives iOS simulators and Android
   emulators through agent-device, and you can
   [write your own](/writing-an-engine).
@@ -73,8 +74,8 @@ you shipped.
   <Card title="Example projects" icon="folder-open" href="/example-projects">
     Run a standalone app with Vite, Next.js, Expo, or SwiftUI.
   </Card>
-  <Card title="Goals" icon="pen-to-square" href="/goals">
-    Write test steps as goals in natural language.
+  <Card title="Core concepts" icon="pen-to-square" href="/core-concepts">
+    Goals, assertions, and locators.
   </Card>
   <Card title="Coding agents" icon="robot" href="/coding-agents">
     Let your coding agent write, run, and debug tests.

@@ -1,6 +1,7 @@
 ---
 title: Bug bashes
 description: Run many explorations at once, then prove each bug with a failing test before anyone reads about it.
+icon: "bug"
 ---
 
 A bug bash runs several `e2e explore` sessions at once, each on one area
@@ -50,7 +51,7 @@ itself: `npx e2e guide bug-bash`.
   `reuseExisting: true` on the target's `command`, or declare the URL with
   port `0` so each run starts its own copy. `reuseExisting` does not apply
   when `CI` is set; use port `0` there. See
-  [Starting your app](/starting-your-app).
+  [Starting your app](/web#starting-your-app).
 - When the target's `app.command` brings up a stack of its own, such as a
   database from `docker compose` that it removes on exit, start the stack once
   and explore with a config that points at the running app and declares no

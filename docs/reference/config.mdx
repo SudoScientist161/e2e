@@ -1,6 +1,7 @@
 ---
 title: E2EConfig
 description: Every configuration key, its default, its valid range, and the environment variables.
+icon: "sliders"
 ---
 
 Export an object from `e2e.config.ts` and use `satisfies E2EConfig` to check
@@ -929,7 +930,7 @@ See [Secrets that are not passwords](/authentication#secrets-that-are-not-passwo
 In `read-write` mode the replay cache records an `agent.act()` only after a
 later verification passes, such as a locator assertion or `agent.assert()`.
 `read-only` replays existing entries and writes none; `off` disables both.
-See [Caching agent steps](/cache).
+See [Caching](/cache).
 
 ```ts
 /**
@@ -984,7 +985,7 @@ instead of a hand-off to the agent; see
 `e2e init` adds `.e2e/cache/` to `.gitignore`, so committing entries is
 opt-in. Remove that line to share replays with CI and teammates; CI stays
 `read-only` unless `cache: 'read-write'` is set. See
-[Caching agent steps](/cache#commit-the-replay-cache).
+[Caching](/cache#commit-the-replay-cache).
 
 ## Run limits
 

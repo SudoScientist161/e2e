@@ -731,3 +731,25 @@ html.dark body .code-block-fade-overlay {
 #content img[src*='/images/examples/nextjs.svg'] {
   width: 80px;
 }
+
+/* Sidebar page icons from a file (in #sidebar-content, or #mobile-nav below
+   the desktop breakpoint) load as <img> in their own colors, while the
+   Font Awesome ones are a mask filled with --gray-400 (--gray-500 in dark
+   mode, the primary color on the current page). The marks under
+   /images/icons/ are drawn in black, so brightness(0) makes them a
+   silhouette and invert() lifts it to that same grey. */
+:is(#sidebar-content, #mobile-nav) img[src*='/images/icons/'] {
+  filter: brightness(0) invert(0.624);
+}
+
+.dark :is(#sidebar-content, #mobile-nav) img[src*='/images/icons/'] {
+  filter: brightness(0) invert(0.439);
+}
+
+:is(#sidebar-content, #mobile-nav) [data-active='true'] img[src*='/images/icons/'] {
+  filter: brightness(0) invert(0.09);
+}
+
+.dark :is(#sidebar-content, #mobile-nav) [data-active='true'] img[src*='/images/icons/'] {
+  filter: brightness(0) invert(0.98);
+}

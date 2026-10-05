@@ -130,82 +130,41 @@
         "groups": [
           {
             "group": "Get started",
-            "icon": "rocket",
             "pages": [
               "index",
               "quickstart",
-              "goals",
-              "assertions",
-              "locators"
+              "core-concepts",
+              "explore"
             ]
           },
           {
-            "group": "Web",
-            "icon": "globe",
+            "group": "Platforms",
             "pages": [
-              "starting-your-app",
-              "browser",
-              "viewports"
-            ]
-          },
-          {
-            "group": "Mobile",
-            "icon": "mobile-screen",
-            "pages": [
+              "web",
               "mobile",
-              "physical-devices"
-            ]
-          },
-          {
-            "group": "API",
-            "icon": "server",
-            "pages": [
               "api-testing"
             ]
           },
           {
             "group": "Models and agents",
-            "icon": "wand-magic-sparkles",
             "pages": [
               "models",
               "decision-models",
               "subscriptions",
-              "agents",
-              "agent-steps",
               "cache"
             ]
           },
           {
-            "group": "Sign-in and security",
-            "icon": "shield-halved",
-            "pages": [
-              "authentication",
-              "security",
-              "telemetry"
-            ]
-          },
-          {
-            "group": "Debug and explore",
-            "icon": "bug",
-            "pages": [
-              "debugging",
-              "explore",
-              "bug-bash"
-            ]
-          },
-          {
             "group": "Automate",
-            "icon": "gears",
             "pages": [
+              "coding-agents",
               "ci",
               "mobile-ci",
-              "github",
-              "coding-agents"
+              "github"
             ]
           },
           {
             "group": "Integrations",
-            "icon": "plug",
             "pages": [
               "integrations/index",
               "integrations/kernel",
@@ -213,23 +172,34 @@
             ]
           },
           {
+            "group": "Extend",
+            "pages": [
+              "tools",
+              "executors",
+              "writing-an-engine"
+            ]
+          },
+          {
+            "group": "Deep dive",
+            "pages": [
+              "browser",
+              "bug-bash",
+              "authentication",
+              "security",
+              "telemetry",
+              "debugging",
+              "agents",
+              "agent-steps"
+            ]
+          },
+          {
             "group": "Migrate",
-            "icon": "arrow-right-arrow-left",
             "pages": [
               "migrate/playwright",
               "migrate/cypress",
               "migrate/selenium",
               "migrate/detox",
               "migrate/maestro"
-            ]
-          },
-          {
-            "group": "Extend",
-            "icon": "puzzle-piece",
-            "pages": [
-              "tools",
-              "executors",
-              "writing-an-engine"
             ]
           }
         ]
@@ -240,7 +210,6 @@
         "groups": [
           {
             "group": "Test API",
-            "icon": "flask",
             "pages": [
               "reference/test",
               "reference/expect",
@@ -251,7 +220,6 @@
           },
           {
             "group": "Project",
-            "icon": "folder-gear",
             "pages": [
               "reference/config",
               "reference/cli",
@@ -263,21 +231,18 @@
           },
           {
             "group": "Web",
-            "icon": "globe",
             "pages": [
               "reference/web"
             ]
           },
           {
             "group": "Mobile",
-            "icon": "mobile-screen",
             "pages": [
               "reference/mobile"
             ]
           },
           {
             "group": "Engine contract",
-            "icon": "gear",
             "pages": [
               "reference/engine"
             ]
@@ -302,10 +267,6 @@
     {
       "source": "/introduction",
       "destination": "/"
-    },
-    {
-      "source": "/web",
-      "destination": "/browser"
     },
     {
       "source": "/reference/device",
@@ -353,7 +314,31 @@
     },
     {
       "source": "/writing-tests",
-      "destination": "/goals"
+      "destination": "/core-concepts"
+    },
+    {
+      "source": "/starting-your-app",
+      "destination": "/web#starting-your-app"
+    },
+    {
+      "source": "/viewports",
+      "destination": "/web#viewports"
+    },
+    {
+      "source": "/physical-devices",
+      "destination": "/mobile#physical-devices"
+    },
+    {
+      "source": "/goals",
+      "destination": "/core-concepts#goals"
+    },
+    {
+      "source": "/assertions",
+      "destination": "/core-concepts#assertions"
+    },
+    {
+      "source": "/locators",
+      "destination": "/core-concepts#locators"
     }
   ]
 }

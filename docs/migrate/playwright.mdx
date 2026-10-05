@@ -1,6 +1,7 @@
 ---
 title: From Playwright
 description: Run e2e alongside Playwright and migrate tests one file at a time.
+icon: "/images/icons/playwright.svg"
 ---
 
 import { SetupPrompt } from '../snippets/setup-prompt-card.jsx';
@@ -49,7 +50,7 @@ A Playwright key the runner recognizes (`testDir`, `baseURL`, `webServer`,
 | Playwright | e2e | Status |
 | --- | --- | --- |
 | `use.baseURL` | `app: { url }` on the target | renamed |
-| `webServer` | `app: { url, command }` on the target, see [Starting your app](/starting-your-app) | renamed |
+| `webServer` | `app: { url, command }` on the target, see [Starting your app](/web#starting-your-app) | renamed |
 | `webServer` array | `app: { url, command }` on each target; targets declaring the same command share one process. Other dependency processes are not started by this version | missing |
 | `webServer.reuseExistingServer` | `app.command: { reuseExisting: true }`; CI ignores it | renamed |
 | `globalSetup`, `globalTeardown` | not yet; `test.setup` for sign-in, hooks and fixtures for setup code | missing |
@@ -260,7 +261,7 @@ what to do today.
 | `page.exposeFunction()`, `addStyleTag()`, `setExtraHTTPHeaders()`, `emulateMedia()`, `clock` | not yet; `browser.evaluate` appends a `<style>` once the page is open, and returns `null` since its result must be JSON | missing |
 | `context.addCookies()`, `context.cookies()` | `browser.setCookies()`, `browser.cookies()` | web only |
 | `context.clearCookies()` | not yet; `app.clearState()` also clears other persisted state and recreates the context | missing |
-| `request` fixture | Node `fetch`, see [Testing APIs](/api-testing) | by design |
+| `request` fixture | Node `fetch`, see [API](/api-testing) | by design |
 | `context.storageState({ path })` | not yet; sessions are per run and encrypted, see [By design](#by-design) | by design |
 
 ### Test structure
@@ -446,8 +447,8 @@ Start with a flow whose interaction sequence changes often, such as a wizard
 or checkout; stable Playwright tests can stay where they are.
 
 <CardGroup cols={2}>
-  <Card title="Goals" icon="pen-to-square" href="/goals">
-    Write test steps as goals instead of scripted selectors.
+  <Card title="Core concepts" icon="pen-to-square" href="/core-concepts">
+    Goals, assertions, and locators instead of scripted selectors.
   </Card>
   <Card title="Web engine reference" icon="masks-theater" href="/reference/web">
     Every option and every `browser` method.

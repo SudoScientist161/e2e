@@ -1,6 +1,7 @@
 ---
 title: From Selenium
 description: Rewrite Selenium flows in TypeScript with locators, retrying assertions, and agent goals.
+icon: "/images/icons/selenium.svg"
 ---
 
 import { SetupPrompt } from '../snippets/setup-prompt-card.jsx';
@@ -38,7 +39,7 @@ agent calls; the locator-based example below works without one.
 | Selenium | e2e |
 | --- | --- |
 | The URL in every `driver.get` | `app: { url }` on the target, then relative paths |
-| Starting the app in a script | `app: { url, command }`, see [Starting your app](/starting-your-app) |
+| Starting the app in a script | `app: { url, command }`, see [Starting your app](/web#starting-your-app) |
 | One driver per browser | One target per browser, `web({ browser: 'firefox' })` |
 | Selenium Grid | `workers` for parallelism; `connect` attaches to a remote Chromium over CDP, and a [browser provider](/browser#hosted-browsers) such as [Kernel](/integrations/kernel) leases hosted browsers |
 | `manage().window().setSize` | `web({ viewport })` |
@@ -124,8 +125,8 @@ Start with one page object and the flows that use it; its setup code can
 become a fixture.
 
 <CardGroup cols={2}>
-  <Card title="Goals" icon="pen-to-square" href="/goals">
-    Write test steps as goals instead of scripted selectors.
+  <Card title="Core concepts" icon="pen-to-square" href="/core-concepts">
+    Goals, assertions, and locators instead of scripted selectors.
   </Card>
   <Card title="screen reference" icon="crosshairs" href="/reference/screen">
     Every query, refinement, action, and read.

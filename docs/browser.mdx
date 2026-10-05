@@ -1,6 +1,7 @@
 ---
 title: Working with the browser
 description: Mock an API, handle a dialog, download a file, reach into an iframe, and pick a browser.
+icon: "window-maximize"
 ---
 
 `@e2e-dev/web` runs tests in Chromium, Firefox, and WebKit. It is built on
@@ -144,7 +145,7 @@ await browser.setCookies([{ url: 'http://localhost:3000', name: 'tz', value: 'UT
 A cookie URL that does not parse, or uses a scheme other than `http:` or
 `https:` (`about:blank` included), is `POLICY_DENIED`; a domain cookie is checked as the origin
 it would be sent to. If any entry is refused, no cookies are set. To resize
-the page, see [Testing viewports](/viewports).
+the page, see [Viewports](/web#viewports).
 
 ## Pick a browser
 
@@ -183,7 +184,7 @@ bunx @e2e-dev/web install webkit --with-deps
 
 `connect` attaches to a remote Chromium over CDP instead of launching
 one; a [browser provider](#hosted-browsers) does the same and also leases
-and releases the browser. [Testing viewports](/viewports) covers sizes.
+and releases the browser. [Viewports](/web#viewports) covers sizes.
 
 ## Hosted browsers
 
@@ -197,7 +198,7 @@ when the run no longer uses it. The engine knows no vendor: for
 provider, and for any other service a provider is a few dozen lines in your
 project. Add `viewport: null` when
 the service shows the window in a live view: the page then
-[fills the window](/viewports#fill-the-window) instead of a fixed 1280 by
+[fills the window](/web#fill-the-window) instead of a fixed 1280 by
 720 area of it.
 
 ```ts
@@ -470,7 +471,7 @@ root declared in HTML (`<template shadowrootmode="closed">`) is out of reach.
   <Card title="Web engine reference" icon="masks-theater" href="/reference/web">
     Every `browser` method, its timeout, and what it throws.
   </Card>
-  <Card title="Starting your app" icon="play" href="/starting-your-app">
-    Let the runner start the dev server and reach protected previews.
+  <Card title="Web" icon="play" href="/web">
+    Let the runner start the dev server, reach protected previews, and test viewports.
   </Card>
 </CardGroup>

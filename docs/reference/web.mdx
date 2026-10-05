@@ -1,6 +1,7 @@
 ---
 title: Browser
 description: The browser engine, its options, and the browser fixture it contributes.
+icon: "globe"
 ---
 
 `@e2e-dev/web` drives Chromium, Firefox, and WebKit through Playwright.
@@ -162,7 +163,7 @@ That protection is text only: unlike a fill, it withholds no screenshot or
 model pixels, so a page that renders the password on screen is not masked in
 them ([Security](/security#secrets)).
 
-`headers` and `basicAuth` are how a test reaches a [protected preview](/starting-your-app#protected-previews).
+`headers` and `basicAuth` are how a test reaches a [protected preview](/web#protected-previews).
 
 `screencast` shapes the recording, not which attempts record: that is the
 config's [`video`](/reference/config#video) mode. `size` takes whole pixels,

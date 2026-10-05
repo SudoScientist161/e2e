@@ -1,6 +1,7 @@
 ---
 title: Signing in
 description: Sign in once, reuse the session across tests, and pass secrets without exposing them to the model.
+icon: "key"
 ---
 
 Sign in once in a setup test and save a named session. Other tests restore
@@ -164,7 +165,7 @@ runner keeps it away from test code and the model altogether.
 
 A `Secret` has no `.value`. Three sinks accept one: the two below in a
 test, and an engine option that declares it, as
-[`basicAuth`](/starting-your-app#protected-previews) does:
+[`basicAuth`](/web#protected-previews) does:
 
 <Tabs>
   <Tab title="Deterministic">
@@ -279,7 +280,7 @@ account, a username with the secrets that sign it in, while a secret is one
 value, so `credentials.admin` and `secrets.admin` can both exist.
 
 In `e2e.config.ts`, `secrets.get()` hands an engine option a secret it needs
-before any test runs, such as a [basic-auth password](/starting-your-app#protected-previews).
+before any test runs, such as a [basic-auth password](/web#protected-previews).
 The config load checks the name, and the value is redacted once the engine
 resolves it, together with the base64 `Authorization` credential it becomes.
 The protection is text only: screenshots and the model's pixels are kept, so

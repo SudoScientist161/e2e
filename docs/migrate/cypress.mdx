@@ -1,6 +1,7 @@
 ---
 title: From Cypress
 description: Replace Cypress command chains with async tests and keep your data-cy attributes.
+icon: "/images/icons/cypress.svg"
 ---
 
 import { SetupPrompt } from '../snippets/setup-prompt-card.jsx';
@@ -37,7 +38,7 @@ for the agent calls shown below.
 | Cypress | e2e |
 | --- | --- |
 | `baseUrl` | `app: { url }` on the target |
-| `start-server-and-test` | `app: { url, command }`, see [Starting your app](/starting-your-app) |
+| `start-server-and-test` | `app: { url, command }`, see [Starting your app](/web#starting-your-app) |
 | `viewportWidth`, `viewportHeight` | `web({ viewport })` |
 | `data-cy` selectors | `web({ testIdAttribute: 'data-cy' })`, then `screen.getByTestId` |
 | `retries` | `retries` |
@@ -137,8 +138,8 @@ Start with a spec that often breaks and whose fixed `cy.wait` calls can
 become assertions on the condition the test needs.
 
 <CardGroup cols={2}>
-  <Card title="Goals" icon="pen-to-square" href="/goals">
-    Write test steps as goals instead of scripted selectors.
+  <Card title="Core concepts" icon="pen-to-square" href="/core-concepts">
+    Goals, assertions, and locators instead of scripted selectors.
   </Card>
   <Card title="Working with the browser" icon="globe" href="/browser">
     Routes, dialogs, downloads, iframes, and page evaluation.
