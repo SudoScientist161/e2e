@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-10-04T08:35:55.012Z",
+  "createdAt": "2026-10-05T15:52:44.229Z",
   "payload": {
     "actions": [
       {
@@ -68,17 +68,9 @@
         }
       },
       {
-        "name": "tap",
-        "summary": "tap checkbox \"✓, Mushrooms\"",
-        "target": {
-          "role": "checkbox",
-          "name": "✓, Mushrooms",
-          "testId": "topping-mushrooms",
-          "selector": "id=topping-mushrooms",
-          "states": [
-            "checked"
-          ]
-        }
+        "name": "dismissKeyboard",
+        "summary": "dismiss the keyboard",
+        "quiet": true
       },
       {
         "name": "tap",
@@ -103,14 +95,13 @@
       "callIndex": 0,
       "agent": "default"
     },
-    "summary": "Selected Medium with exactly Cheese and Olives, enabled rush delivery, opened and dismissed the keyboard, and placed the order. The screen confirms: “Order placed: Medium with Cheese, Olives (rush).”",
+    "summary": "Dismissed the keyboard and placed the order. The confirmation reads: “Order placed: Medium with Cheese, Olives (rush).”",
     "startPath": "dev.e2e.benchmark / Choice Controls",
     "endPath": "dev.e2e.benchmark / Choice Controls",
     "endAnchors": [
       {
         "role": "text",
-        "name": "Order placed: Medium with Cheese, Olives (rush)",
-        "testId": "success-message"
+        "name": "Order placed: Medium with Cheese, Olives (rush)"
       }
     ],
     "goneAnchors": [
@@ -152,6 +143,6 @@
         "testId": "topping-olives"
       }
     ],
-    "endWaitMs": 11855
+    "endWaitMs": 11804
   }
 }
