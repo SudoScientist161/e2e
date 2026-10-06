@@ -86,6 +86,11 @@ this.
 | `call` | `tool`, `args` (optional), `session` (required while several are open) | Runs one catalog tool. Arguments are validated against the tool's closed schema first: a wrong type or an argument the tool does not declare is `INVALID_ARGUMENT`, and nothing runs. An action that fails is an error result that still carries the screen it re-observed, and leads with the tool, its target, and the code: `navigate file:///etc/passwd failed: POLICY_DENIED: forbidden URL scheme: file:`. |
 | `close_session` | `session` (required while several are open) | Saves a recording still running, ends the attempt, disposes the engine, stops the app processes the session started once no other session uses them. |
 
+Project tools honor their AI SDK `toModelOutput` renderer, including when
+`execute` returns a string. Rendered `error-text` and `error-json` outputs
+are MCP error results (`isError: true`) so the coding agent can distinguish
+a failed tool call from a successful one.
+
 ## Several sessions
 
 Several sessions can be open at once, up to `--max-sessions`, each on its

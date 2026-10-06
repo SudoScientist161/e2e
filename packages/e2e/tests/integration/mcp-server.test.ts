@@ -93,6 +93,14 @@ export default {
         { description: 'Reset the kiosk.', inputSchema: z.object({}), execute: async () => 'kiosk reset' },
         { mutates: true, platforms: ['kiosk'] },
       ),
+      render_message: defineTool(
+        { description: 'Render a message for the model.', inputSchema: z.object({}), execute: async () => 'raw string', toModelOutput: async ({ output }) => ({ type: 'text', value: 'formatted: ' + output }) },
+        { mutates: false },
+      ),
+      render_failure: defineTool(
+        { description: 'Render a failed result for the model.', inputSchema: z.object({ format: z.enum(['text', 'json']) }), execute: async () => ({ reason: 'not available' }), toModelOutput: ({ input, output }) => input.format === 'text' ? { type: 'error-text', value: output.reason } : { type: 'error-json', value: output } },
+        { mutates: false },
+      ),
     },
   } },
 } satisfies E2EConfig;
@@ -435,6 +443,21 @@ describe('e2e mcp', { timeout: 120_000 }, () => {
     expect(result.isError).toBe(true);
     expect(result.text).toContain('TARGET_REQUIRED');
     expect(result.text).toContain('web, kiosk');
+  });
+
+  it('renders project tool model output and preserves failed results over MCP', async () => {
+    const opened = await invoke('open_session', { config: 'custom.config.ts', target: 'web' });
+    expect(opened.isError, opened.text).toBe(false);
+    const message = await call('render_message');
+    expect(message.isError, message.text).toBe(false);
+    expect(message.text).toBe('formatted: raw string');
+    const failureText = await call('render_failure', { format: 'text' });
+    expect(failureText.isError).toBe(true);
+    expect(failureText.text).toBe('not available');
+    const failureJson = await call('render_failure', { format: 'json' });
+    expect(failureJson.isError).toBe(true);
+    expect(JSON.parse(failureJson.text)).toEqual({ reason: 'not available' });
+    await invoke('close_session');
   });
 
   it('catalogs and runs the project tools of a custom engine target, with only the verbs it declares', async () => {

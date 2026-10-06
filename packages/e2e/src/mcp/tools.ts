@@ -255,11 +255,14 @@ type ModelOutput = Awaited<ReturnType<NonNullable<Tool['toModelOutput']>>>;
  * else is JSON, so a structured output is never lost.
  */
 export async function resultFromOutput(tool: ToolSet[string], output: unknown, input: unknown = undefined): Promise<McpToolResult> {
-  if (typeof output === 'string') return textResult(output);
   if (tool.toModelOutput !== undefined) {
-    const content = contentFromModelOutput(await tool.toModelOutput({ toolCallId: 'mcp', input, output }));
-    if (content !== undefined) return { content };
+    const rendered = await tool.toModelOutput({ toolCallId: 'mcp', input, output });
+    const content = contentFromModelOutput(rendered);
+    if (content !== undefined) {
+      return { content, ...(rendered.type === 'error-text' || rendered.type === 'error-json' ? { isError: true } : {}) };
+    }
   }
+  if (typeof output === 'string') return textResult(output);
   return textResult(output === undefined ? 'Done.' : JSON.stringify(output, null, 2));
 }
 

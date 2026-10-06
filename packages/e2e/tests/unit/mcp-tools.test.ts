@@ -154,6 +154,21 @@ describe('resultFromOutput', () => {
     };
     expect(await resultFromOutput(echo, 42, { label: 'answer' })).toEqual({ content: [{ type: 'text', text: 'answer: 42' }] });
   });
+
+  it('renders string outputs with the custom renderer before passing them through', async () => {
+    const rendered: Tool = {
+      ...plain,
+      toModelOutput: async ({ output }) => ({ type: 'text', value: `formatted: ${String(output)}` }),
+    };
+    expect(await resultFromOutput(rendered, 'raw string')).toEqual({ content: [{ type: 'text', text: 'formatted: raw string' }] });
+  });
+
+  it('preserves model error outputs as MCP errors', async () => {
+    const errorText: Tool = { ...plain, toModelOutput: () => ({ type: 'error-text', value: 'not available' }) };
+    const errorJson: Tool = { ...plain, toModelOutput: () => ({ type: 'error-json', value: { reason: 'not available' } }) };
+    expect(await resultFromOutput(errorText, 'raw string')).toEqual({ content: [{ type: 'text', text: 'not available' }], isError: true });
+    expect(await resultFromOutput(errorJson, { reason: 'not available' })).toEqual({ content: [{ type: 'text', text: '{\n  "reason": "not available"\n}' }], isError: true });
+  });
 });
 
 describe('errorResult', () => {

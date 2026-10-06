@@ -58,6 +58,10 @@ The catalog, per session:
 | `stop_recording` | Stops it and returns the absolute path of each video file, under `<output>/videos/<session>/` (`.e2e` by default), or the URL of a provider's own recording. |
 | Project tools | Every `defineTool` in the agent's `tools` that applies to the target's platform, under its own name; an engine pack such as `mobileTools` adds `open_app`, `swipe`, `alert`. |
 
+Project tools use their `toModelOutput` renderer for strings as well as
+structured results. Its `error-text` and `error-json` outputs set the MCP
+result's `isError: true`; treat them as failed calls.
+
 Once a secret is filled in the session, `screenshot` and the point tools
 (`tap_at`, `hover_at`, `type_at`, `press_at`, `select_at`) answer with a
 `PIXEL_TAINTED` line for the rest of it; act on listed nodes by id (topic
