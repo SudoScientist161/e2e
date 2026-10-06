@@ -1,15 +1,29 @@
-import type { Experimental_EvaluationModelV4 } from '@ai-sdk/provider';
 import type { StepExecutorContext } from 'e2e';
 import { AgentError, isAgentError } from 'e2e/agent';
+import { ConfigurationError } from 'e2e/engine';
+import * as ai from 'ai';
 import {
-  experimental_evaluate,
   InvalidArgumentError,
   InvalidResponseDataError,
   JSONParseError,
   LoadAPIKeyError,
   TypeValidationError,
 } from 'ai';
+import { missingKey } from './api-key.ts';
 import type { DecisionRequest } from './questions.ts';
+import type { DecisionExecutorOptions } from './types.ts';
+/**
+ * The SDK's decide call, or INVALID_CONFIG when the installed `ai` predates
+ * it. Read off the namespace so an older `ai` still loads this module and
+ * the user gets the version to install instead of a link error.
+ */
+export function requireDecide(): typeof ai.experimental_decide {
+  const found = (ai as Partial<typeof ai>).experimental_decide;
+  if (typeof found !== 'function') {
+    throw new ConfigurationError('INVALID_CONFIG', 'decisionExecutor() needs ai 7.0.128 or later; update the ai package');
+  }
+  return found;
+}
 /** One gated answer: the chosen option, its probability, and the provider confidence. */
 export interface Decision {
   readonly choice: string;
@@ -23,13 +37,13 @@ interface RawAnswer {
   readonly probabilities?: Record<string, number>;
 }
 /**
- * Makes one evaluate call under the step budget and returns the answers.
- * This is the only file that touches the SDK evaluate API, so a rename
+ * Makes one decide call under the step budget and returns the answers.
+ * This is the only file that touches the SDK decide API, so a rename
  * there stays a one-file change.
  */
-export async function evaluate(
+export async function decide(
   ctx: StepExecutorContext,
-  model: Experimental_EvaluationModelV4,
+  model: DecisionExecutorOptions['model'],
   request: DecisionRequest,
 ): Promise<Record<string, Decision>> {
   ctx.signal.throwIfAborted();
@@ -42,8 +56,8 @@ export async function evaluate(
   let answers: Record<string, RawAnswer>;
   try {
     const call = { model, state: request.state, questions: request.questions };
-    const result = await experimental_evaluate({
-      ...(call as unknown as Parameters<typeof experimental_evaluate>[0]),
+    const result = await requireDecide()({
+      ...(call as unknown as Parameters<typeof ai.experimental_decide>[0]),
       maxRetries: 0,
       abortSignal: ctx.signal,
     });
@@ -54,7 +68,7 @@ export async function evaluate(
     providerMetadata = result.providerMetadata as Record<string, Record<string, unknown>> | undefined;
     answers = result.answers as Record<string, RawAnswer>;
   } catch (error) {
-    throw evaluateError(error, ctx.signal);
+    throw decideError(error, ctx.signal);
   } finally {
     ctx.budgets.recordModelCall({
       provider: model.provider,
@@ -94,10 +108,10 @@ function reportedConfidence(metadata: Record<string, Record<string, unknown>> | 
   return 0;
 }
 /** Maps SDK failures onto the runner error codes without echoing provider text. */
-function evaluateError(error: unknown, signal: AbortSignal): unknown {
+function decideError(error: unknown, signal: AbortSignal): unknown {
   signal.throwIfAborted();
   if (isAgentError(error)) return error;
-  if (LoadAPIKeyError.isInstance(error)) return new AgentError('MODEL_UNAVAILABLE', 'Set the evaluation model API key.');
+  if (LoadAPIKeyError.isInstance(error)) return missingKey('decision', error);
   if (InvalidArgumentError.isInstance(error)) return error;
   if (InvalidResponseDataError.isInstance(error) || TypeValidationError.isInstance(error) || JSONParseError.isInstance(error)) {
     return new AgentError('MODEL_OUTPUT_INVALID', 'The decision model returned an invalid answer.');
