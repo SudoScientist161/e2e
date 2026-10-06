@@ -12,6 +12,16 @@ export interface FixturePage {
 
 export const FIXTURE_PAGES: readonly FixturePage[] = [
   {
+    name: 'inferred table headers',
+    html: `
+      <table><tr><th>Item</th><td>Value</td></tr></table>
+      <table><tr><td>Value</td><th>Last item</th></tr></table>
+      <table><tr><th>Column</th><th>Other column</th></tr></table>
+      <table><tr><th scope="col">Explicit column</th><td>Value</td></tr></table>
+      <table><tr><th scope="row">Explicit row</th><th>Column</th></tr></table>
+    `,
+  },
+  {
     name: 'inputs',
     html: `
       <label>Full name <input type="text"></label>

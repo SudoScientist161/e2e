@@ -241,7 +241,19 @@ export const readSemanticsFunction = <Mode extends SemanticMode>(
       }
       case 'th': {
         const scope = (el.getAttribute('scope') ?? '').toLowerCase();
-        return scope === 'row' || scope === 'rowgroup' ? 'rowheader' : 'columnheader';
+        if (scope === 'row' || scope === 'rowgroup') return 'rowheader';
+        if (scope === 'col' || scope === 'colgroup') return 'columnheader';
+        const previous = el.previousElementSibling;
+        const next = el.nextElementSibling;
+        if (previous === null && next === null) {
+          const row = el.parentElement;
+          const table = row?.tagName.toLowerCase() === 'tr' ? row.closest('table') : null;
+          return table !== null && (table as HTMLTableElement).rows.length <= 1 ? null : 'columnheader';
+        }
+        if (previous?.tagName.toLowerCase() === 'th' && next?.tagName.toLowerCase() === 'th') return 'columnheader';
+        const hasDataNeighbor = [previous, next].some((cell) =>
+          cell?.tagName.toLowerCase() === 'td' && ((cell.textContent ?? '').trim() !== '' || cell.children.length > 0));
+        return hasDataNeighbor ? 'rowheader' : 'columnheader';
       }
       case 'dialog':
         return 'dialog';

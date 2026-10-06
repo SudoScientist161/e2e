@@ -75,6 +75,28 @@ describe('role mapping', () => {
     expect(flatten(tree).some((node) => node.role === 'presentation')).toBe(false);
   });
 
+  it('infers row headers from data-cell neighbors and respects explicit scopes', async () => {
+    await page.setContent(`
+      <table><tr><th data-testid="row">Item</th><td>Value</td></tr></table>
+      <table><tr><td>Value</td><th data-testid="last-row">Item</th></tr></table>
+      <table><tr><th data-testid="column">Item</th><th>Value</th></tr></table>
+      <table><tr><th scope="col" data-testid="scoped-column">Item</th><td>Value</td></tr></table>
+      <table><tr><th scope="row" data-testid="scoped-row">Item</th><th>Value</th></tr></table>
+      <table><tr><th data-testid="empty-data">Item</th><td></td></tr></table>
+      <table><tr><th data-testid="child-data">Item</th><td><input aria-label="Value"></td></tr></table>
+      <table><tr><th data-testid="single">Item</th></tr></table>
+      <table><tr><th data-testid="single-column">Item</th></tr><tr><td>Value</td></tr></table>
+    `);
+    const nodes = await rolesByTestId();
+    expect(Object.fromEntries([...nodes].map(([id, node]) => [id, node.role]))).toEqual({
+      row: 'rowheader', 'last-row': 'rowheader', column: 'columnheader',
+      'scoped-column': 'columnheader', 'scoped-row': 'rowheader', 'empty-data': 'columnheader',
+      'child-data': 'rowheader', single: undefined, 'single-column': 'columnheader',
+    });
+    expect(await page.getByRole('rowheader').evaluateAll((els) => els.map((el) => el.getAttribute('data-testid'))))
+      .toEqual(['row', 'last-row', 'scoped-row', 'child-data']);
+  });
+
   it('reports an inline svg as an image, named by its title child, as Playwright does', async () => {
     await page.setContent(`
       <input aria-label="Message">

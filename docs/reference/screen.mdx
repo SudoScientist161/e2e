@@ -669,7 +669,11 @@ and `<details>` are `group`, `<input type="number">` is `spinbutton`,
 `<select size="3">` is a `listbox` like a `multiple` one, an `<input list>`
 naming a `<datalist>` is a `combobox`, a `<td>` of a `role="grid"` table is a
 `gridcell`,
-`<thead>` and `<tbody>` are `rowgroup`, `<th scope="row">` is `rowheader`,
+`<thead>` and `<tbody>` are `rowgroup`, `<th scope="row">` is `rowheader`.
+A scope-less `<th>` beside a data cell with text or children is also a
+`rowheader`; header-only rows keep `columnheader`. A lone scope-less header in a one-row
+table has no header role, while `scope="col"` and `scope="colgroup"` explicitly
+keep `columnheader`.
 `<figure>` is `figure`, `<article>` is `article`, `<header>` and `<footer>` are
 `banner` and `contentinfo` only outside sectioning content or an element with
 a sectioning role (`article`, `complementary`, `main`, `navigation`, `region`),
