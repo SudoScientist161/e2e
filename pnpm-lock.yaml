@@ -300,8 +300,8 @@ importers:
         specifier: 26.6.2
         version: 26.6.2
       agent-device:
-        specifier: 0.21.21
-        version: 0.21.21(ai@7.0.128(zod@4.6.1))
+        specifier: 0.21.22
+        version: 0.21.22(ai@7.0.128(zod@4.6.1))
       ai:
         specifier: 7.0.128
         version: 7.0.128(zod@4.6.1)
@@ -497,8 +497,8 @@ importers:
   packages/mobile:
     dependencies:
       agent-device:
-        specifier: 0.21.21
-        version: 0.21.21(ai@7.0.107(zod@4.6.1))
+        specifier: 0.21.22
+        version: 0.21.22(ai@7.0.107(zod@4.6.1))
       pngjs:
         specifier: 7.0.0
         version: 7.0.0
@@ -3319,8 +3319,8 @@ packages:
     engines: {node: '>=18.18'}
     hasBin: true
 
-  agent-device@0.21.21:
-    resolution: {integrity: sha512-NBPKPrkG1IxfkEZWqhcB4Zdh/JXoPv8GGkTwxdUtLdaaOgZzMebPUNCwcfSpzGDN9G2ZSP0pMOAEz592G8uRoQ==}
+  agent-device@0.21.22:
+    resolution: {integrity: sha512-ndUh5b+lZ2fRzzY80TTl/KmxR4bh+3FezSH0UGCjPCpN//1trSqtzzNUWunc4woY/vW3DEiPx5xYIwG+fBOXWA==}
     engines: {node: '>=22.12'}
     hasBin: true
     peerDependencies:
@@ -10707,11 +10707,11 @@ snapshots:
 
   agent-cli-detector@0.1.7: {}
 
-  agent-device@0.21.21(ai@7.0.107(zod@4.6.1)):
+  agent-device@0.21.22(ai@7.0.107(zod@4.6.1)):
     optionalDependencies:
       ai: 7.0.107(zod@4.6.1)
 
-  agent-device@0.21.21(ai@7.0.128(zod@4.6.1)):
+  agent-device@0.21.22(ai@7.0.128(zod@4.6.1)):
     optionalDependencies:
       ai: 7.0.128(zod@4.6.1)
 
