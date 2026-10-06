@@ -357,3 +357,8 @@ export default {
 - `.gitignore` lists the `.e2e/` outputs (init adds them); drop the
   `.e2e/cache/` line to commit replays.
 - CI runs the whole suite, agent steps included, on PRs; see `running`.
+
+### Existing MCP registration
+
+Re-running `init` preserves the e2e MCP server's environment and client settings
+while repairing its launch command. A current registration is left unchanged.

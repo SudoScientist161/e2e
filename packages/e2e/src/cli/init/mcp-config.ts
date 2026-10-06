@@ -70,7 +70,8 @@ export function findRegisteredMcpFiles(cwd: string): string[] {
 /**
  * Plans the writes for the given files. A file without the entry gets it
  * merged in; one whose entry already matches needs nothing and is left out.
- * Other servers, other keys, and the file's indentation are preserved.
+ * Extra settings on the e2e entry, other servers, other keys, and the file's
+ * indentation are preserved.
  */
 export function planMcpRegistration(cwd: string, files: readonly string[]): McpRegistration[] {
   const registrations: McpRegistration[] = [];
@@ -81,8 +82,12 @@ export function planMcpRegistration(cwd: string, files: readonly string[]): McpR
       typeof document.mcpServers === 'object' && document.mcpServers !== null && !Array.isArray(document.mcpServers)
         ? document.mcpServers
         : {};
-    if (JSON.stringify(servers[MCP_SERVER_NAME]) === JSON.stringify(SERVER_ENTRY)) continue;
-    const merged: McpConfigDocument = { ...document, mcpServers: { ...servers, [MCP_SERVER_NAME]: SERVER_ENTRY } };
+    const existing = servers[MCP_SERVER_NAME];
+    const entry = typeof existing === 'object' && existing !== null && !Array.isArray(existing)
+      ? { ...existing, ...SERVER_ENTRY }
+      : SERVER_ENTRY;
+    if (JSON.stringify(existing) === JSON.stringify(entry)) continue;
+    const merged: McpConfigDocument = { ...document, mcpServers: { ...servers, [MCP_SERVER_NAME]: entry } };
     const original = existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
     const indent = original?.match(/\n([\t ]+)"/)?.[1] ?? '  ';
     registrations.push({

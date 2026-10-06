@@ -47,6 +47,23 @@ describe('planMcpRegistration', () => {
     expect(findRegisteredMcpFiles(dir)).toEqual(['.mcp.json', '.cursor/mcp.json']);
   });
 
+  it('keeps extra settings on an already current server without rewriting the file', () => {
+    const entry = { ...ENTRY, env: { APP_ENV: 'staging' }, timeout: 30_000 };
+    const original = JSON.stringify({ mcpServers: { e2e: entry } }, null, 4) + '\n';
+    writeFileSync(path.join(dir, '.mcp.json'), original);
+    expect(planMcpRegistration(dir, ['.mcp.json'])).toEqual([]);
+    expect(readFileSync(path.join(dir, '.mcp.json'), 'utf8')).toBe(original);
+  });
+
+  it('repairs a stale launch command without dropping environment or client settings', () => {
+    writeFileSync(path.join(dir, '.mcp.json'), JSON.stringify({
+      mcpServers: { e2e: { command: 'e2e', args: ['mcp'], env: { APP_ENV: 'staging' }, timeout: 30_000 } },
+      other: true,
+    }));
+    const [plan] = planMcpRegistration(dir, ['.mcp.json']);
+    expect(JSON.parse(plan!.content)).toEqual({ mcpServers: { e2e: { ...ENTRY, env: { APP_ENV: 'staging' }, timeout: 30_000 } }, other: true });
+  });
+
   it('refuses to overwrite a file that is not JSON', () => {
     writeFileSync(path.join(dir, '.mcp.json'), '{ not json');
     expect(() => planMcpRegistration(dir, ['.mcp.json'])).toThrow(/is not valid JSON/);

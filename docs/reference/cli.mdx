@@ -141,7 +141,10 @@ bunx e2e init --yes
 ```
 </CodeGroup>
 
-Re-running `init` keeps an existing config and adds no packages for it. Once
+Re-running `init` keeps an existing config and adds no packages for it. MCP
+registration keeps extra settings on the e2e server, such as environment
+variables and client timeouts, even when repairing its launch command. A
+current registration is left byte-for-byte unchanged. Once
 a skill directory exists, later runs refresh copies that differ from the
 installed version and never add a directory the project did not choose. A
 `.claude/skills/e2e/` copy from an earlier version becomes the symlink when
