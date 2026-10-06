@@ -57,7 +57,7 @@ export interface TelemetryOptions {
   readonly fetch?: typeof fetch;
   /** Where the notice and the debug output go; stderr when absent. */
   readonly write?: (text: string) => void;
-  /** Resolves the anonymous project id; git and the salted path when absent. */
+  /** Resolves the anonymous project id; the hashed root commit when absent. */
   readonly projectId?: typeof anonymousProjectId;
 }
 
@@ -216,12 +216,10 @@ export class Telemetry {
 
   /**
    * Git is asked for the project id now, while the command runs, so the
-   * flush at the end waits on the network alone. A fleet or CI has no
-   * store, so a path outside git has nothing to salt it and yields no id.
+   * flush at the end waits on the network alone.
    */
   private lookUpProject(): void {
-    const store: TelemetryStore | undefined = this.statedId === undefined ? this.store() : undefined;
-    this.project ??= this.projectId(this.cwd, store?.pathSalt);
+    this.project ??= this.projectId(this.cwd);
   }
 
   /** The session event, first in the batch; absent for an invocation that never reached a command. */
