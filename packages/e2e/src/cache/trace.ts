@@ -134,7 +134,10 @@ export interface TraceTargetDescriptor {
    */
   readonly position?: TracePosition;
   /**
-   * An anchor's states that were on, sorted; anchors only. A switch turned
+   * The states that were on, sorted: an anchor's, and a toggle's when a tap
+   * acted on it (`TOGGLE_ROLES`), empty for a toggle that was off. A tapped
+   * toggle relocates only onto one in the same state: a tap flips it, so on
+   * a toggle in the other state it does the opposite of the recording. A switch turned
    * on is the same control before and after, so its state is what tells
    * the step's effect from a tap that did nothing.
    */
@@ -154,6 +157,9 @@ export const TRACE_ANCHOR_STATES = ['checked', 'expanded', 'pressed', 'selected'
 export type TraceAnchorState = (typeof TRACE_ANCHOR_STATES)[number];
 
 const isTraceAnchorState = oneOf(TRACE_ANCHOR_STATES);
+
+/** The roles a tap flips, whose state a recorded tap keeps (`TraceTargetDescriptor.states`). */
+export const TOGGLE_ROLES: ReadonlySet<string> = new Set(['checkbox', 'switch', 'radio', 'menuitemcheckbox', 'menuitemradio']);
 
 interface ActionBase {
   /** One-line prose summary — the only view a mid-step hand-off notice shows. */
@@ -510,7 +516,7 @@ function readActionTrace(document: unknown): ActionTrace | undefined {
 function readAnchors(document: unknown): TraceTargetDescriptor[] | undefined {
   if (document === undefined) return [];
   if (!Array.isArray(document) || document.length > MAX_TRACE_ANCHORS) return undefined;
-  return each(document, readDescriptor);
+  return each(document, (anchor) => readDescriptor(anchor, false));
 }
 
 function readRecordedAction(document: unknown): RecordedAction | undefined {
@@ -816,7 +822,8 @@ function mapDescriptors(descriptors: readonly TraceTargetDescriptor[], map: Trac
   return each(descriptors, (descriptor) => mapDescriptorText(descriptor, map));
 }
 
-function readDescriptor(document: unknown): TraceTargetDescriptor | undefined {
+/** One descriptor; `target` allows the empty state list a tapped toggle that was off records, which an anchor never does. */
+function readDescriptor(document: unknown, target = true): TraceTargetDescriptor | undefined {
   if (typeof document !== 'object' || document === null || Array.isArray(document)) {
     return undefined;
   }
@@ -836,15 +843,16 @@ function readDescriptor(document: unknown): TraceTargetDescriptor | undefined {
   }
   if (raw['states'] !== undefined) {
     const states = readStates(raw['states']);
+    if (states !== undefined && states.length === 0 && !target) return undefined;
     if (states === undefined) return undefined;
     descriptor['states'] = states;
   }
   return descriptor as TraceTargetDescriptor;
 }
 
-/** Known anchor states, each once, in sorted order, as `anchors.ts` writes them; an empty list is never written. */
+/** Known states, each once, in sorted order; empty only on a tapped toggle that was off. */
 function readStates(document: unknown): readonly TraceAnchorState[] | undefined {
-  if (!Array.isArray(document) || document.length === 0) return undefined;
+  if (!Array.isArray(document)) return undefined;
   const states = each(document, (state) => (isTraceAnchorState(state) ? state : undefined));
   if (states === undefined) return undefined;
   return states.every((state, index) => index === 0 || states[index - 1]! < state) ? states : undefined;

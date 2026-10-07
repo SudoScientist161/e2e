@@ -17,6 +17,7 @@
  */
 
 import { describeAction, type DescribedAction, type RecordableAction } from '../agent/actions.ts';
+import type { RedactedNode } from '../agent/observation.ts';
 import { isRelocatableDescriptor } from './relocate.ts';
 import {
   bound,
@@ -26,6 +27,8 @@ import {
   MAX_TRACE_END_WAIT_MS,
   MAX_TRACE_INPUT_CHARS,
   MAX_TRACE_SUMMARY_CHARS,
+  TOGGLE_ROLES,
+  TRACE_ANCHOR_STATES,
   isNodeAction,
   type ActionTrace,
   type DerivedReason,
@@ -168,7 +171,7 @@ export class TraceRecorder {
       return descriptor ?? { role: 'unknown' };
     };
     const requireTarget = (): TraceTargetDescriptor => require(target);
-    if (isNodeAction(action)) return { name: action.name, summary, target: requireTarget() };
+    if (isNodeAction(action)) return { name: action.name, summary, target: withToggleState(requireTarget(), action.node) };
     switch (action.name) {
       case 'check':
         return { name: 'check', summary, target: requireTarget(), checked: action.checked };
@@ -267,6 +270,16 @@ export class TraceRecorder {
     }
     this.actions.push(action);
   }
+}
+
+/**
+ * A tapped toggle's descriptor with the states it was in (`TOGGLE_ROLES`),
+ * none of them on included: a tap flips it, so a replay must find it in the
+ * state the recording tapped it in.
+ */
+function withToggleState(target: TraceTargetDescriptor, node: RedactedNode): TraceTargetDescriptor {
+  if (target.role === undefined || !TOGGLE_ROLES.has(target.role)) return target;
+  return { ...target, states: TRACE_ANCHOR_STATES.filter((state) => node.states?.[state] === true) };
 }
 
 /** A place inside a box as a fraction of its side, clamped to the box and rounded so the entry stays small. */

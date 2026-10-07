@@ -267,7 +267,7 @@ export async function replayTrace(
     // The look before this action: the start capture serves the first one;
     // after that, the previous action's settle policy says how far a fresh
     // capture settles.
-    const look: Look =
+    let look: Look =
       previous === undefined
         ? options.initial === undefined
           ? HELD_STILL
@@ -306,8 +306,44 @@ export async function replayTrace(
               const scrolled = await scrollOnce(host, planned.direction, list, index === 0 ? look : HELD_STILL);
               if (scrolled.kind === 'failed') return stop(scrolled.failure, partial());
               if (scrolled.kind === 'viewport') list = undefined;
+    // One more try for an action the engine says never reached the app: a tap
+    // that landed while a list re-rendered or a sheet slid in. The live loop
+    // does the same; the retry first waits for the screen to hold still and
+    // finds the target again, and an action that may have reached it never
+    // repeats.
+    for (let tries = 0; ; tries += 1) {
+      try {
+        switch (planned.kind) {
+          case 'targeted': {
+            const found = await refind(planned.descriptor, look);
+            if (found.kind === 'failed') return stop(found.failure);
+            await planned.invoke({ id: found.id });
+            break;
+          }
+          case 'free':
+            if (previous !== undefined && options.looksBeforeFree?.() === true) await firstLook(host, look);
+            await planned.invoke();
+            break;
+          case 'scroll': {
+            // A scroll on a list is paced by the relocation before each repeat.
+            // A viewport scroll relocates nothing, so each later repeat takes a
+            // settled look of its own, as the live loop did between them. A
+            // list judged lost scrolls as the viewport from then on, instead of
+            // waiting out the relocation backoff again on every repeat.
+            let list = planned.list;
+            for (let index = 0; index < planned.times; index += 1) {
+              if (list === undefined) {
+                if (index > 0) await host.observe('held-still');
+                // A folded scroll is paced in full whatever its entry says.
+                await (planned.times > 1 ? host.actions : actions).scroll(planned.direction);
+              } else {
+                const scrolled = await scrollOnce(host, refind, planned.direction, list, index === 0 ? look : HELD_STILL);
+                if (scrolled.kind === 'failed') return stop(scrolled.failure, partial());
+                if (scrolled.kind === 'viewport') list = undefined;
+              }
+              repeated += 1;
             }
-            repeated += 1;
+            break;
           }
           break;
         }
@@ -334,9 +370,41 @@ export async function replayTrace(
           const { viewport } = screen;
           if (viewport.width !== planned.viewport.width || viewport.height !== planned.viewport.height) {
             return stop('viewport-changed');
+          case 'scrollUntil': {
+            if (planned.list === undefined) {
+              await actions.scrollUntil(planned.text, planned.direction);
+              break;
+            }
+            const found = await refind(planned.list.descriptor, look);
+            if (found.kind === 'found') await actions.scrollUntil(planned.text, planned.direction, { id: found.id });
+            else if ((planned.list.spans ?? 0) >= MAIN_LIST_SHARE) await actions.scrollUntil(planned.text, planned.direction);
+            else return stop(found.failure);
+            break;
           }
-          await planned.invoke(planned.point);
-          break;
+          case 'drag': {
+            const pair = await relocatePair(host, planned.source, planned.destination, look);
+            if (pair.kind === 'failed') return stop(pair.failure);
+            pair.ends.forEach(note);
+            await actions.drag({ id: pair.ends[0].id }, { id: pair.ends[1].id });
+            break;
+          }
+          case 'point': {
+            const screen = await firstLook(host, look);
+            if (screen.kind === 'pixels') return stop('action-failed');
+            const { viewport } = screen;
+            if (viewport.width !== planned.viewport.width || viewport.height !== planned.viewport.height) {
+              return stop('viewport-changed');
+            }
+            await planned.invoke(planned.point);
+            break;
+          }
+          case 'within': {
+            const found = await refind(planned.descriptor, look);
+            const at = placeWithin(found, planned);
+            if (at === undefined) return stop(found.kind === 'failed' ? found.failure : 'target-not-found');
+            await planned.invoke(at);
+            break;
+          }
         }
         case 'within': {
           const relocated = await relocate(host, planned.descriptor, look);
@@ -344,17 +412,21 @@ export async function replayTrace(
           if (at === undefined) return stop(relocated.kind === 'failed' ? relocated.failure : 'target-not-found');
           await planned.invoke(at);
           break;
+        break;
+      } catch (cause) {
+        if (isReplayFatal(cause, host.signal)) throw cause;
+        if (isUncertainCommit(cause)) {
+          // Input may have reached the app (spec 09): the hand-off must name
+          // the uncertain action so the executor verifies before re-acting —
+          // the runner never repeats an unknown-commit operation itself.
+          return { ...stop('action-uncertain', partial()), uncertainAction: action.summary };
         }
+        if (tries === 0 && repeated === 0 && !hasCause(cause, ({ code }) => typeof code === 'string' && NEVER_RETRIED.has(code))) {
+          look = HELD_STILL;
+          continue;
+        }
+        return stop('action-failed', partial());
       }
-    } catch (cause) {
-      if (isReplayFatal(cause, host.signal)) throw cause;
-      if (isUncertainCommit(cause)) {
-        // Input may have reached the app (spec 09): the hand-off must name
-        // the uncertain action so the executor verifies before re-acting —
-        // the runner never repeats an unknown-commit operation itself.
-        return { ...stop('action-uncertain', partial()), uncertainAction: action.summary };
-      }
-      return stop('action-failed', partial());
     }
     summaries.push(action.summary);
     previous = action;
@@ -599,6 +671,9 @@ async function pollSettled<T>(
     screen = await host.observe('raw');
   }
 }
+
+/** Failures a second try cannot change: the policy refused the action, or its arguments are wrong. */
+const NEVER_RETRIED: ReadonlySet<string> = new Set(['POLICY_DENIED', 'INVALID_ARGUMENT', 'UNSUPPORTED_CAPABILITY']);
 
 /** True when any error in the cause chain reports an unknown commit state. */
 function isUncertainCommit(cause: unknown): boolean {

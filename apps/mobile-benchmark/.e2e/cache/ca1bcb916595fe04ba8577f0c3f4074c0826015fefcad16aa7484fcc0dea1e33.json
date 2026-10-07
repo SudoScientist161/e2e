@@ -1,6 +1,6 @@
 {
   "schemaVersion": "trace-1",
-  "createdAt": "2026-09-23T17:10:40.321Z",
+  "createdAt": "2026-10-04T07:52:41.479Z",
   "payload": {
     "actions": [
       {
@@ -41,22 +41,37 @@
     "recordedFor": {
       "testId": "tests-agent/scenarios.e2e.ts::act%20completes%20Error%20Recovery",
       "targetId": "ios-simulator",
-      "instructionDigest": "e8369dfb1ec63a3fa2636f3e1803fa229587d469fcb7abdafcfbbb046625544c"
+      "instructionDigest": "e8369dfb1ec63a3fa2636f3e1803fa229587d469fcb7abdafcfbbb046625544c",
+      "paramsDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "callIndex": 0,
+      "agent": "default"
     },
-    "summary": "Retried the failed draft load, then deleted the Untitled draft and confirmed the deletion. The screen now shows “Draft deleted.”",
-    "startPath": "dev.e2e.benchmark / Benchmark Examples",
-    "endPath": "dev.e2e.benchmark / Benchmark Examples",
+    "summary": "Retried the failed draft load successfully, then deleted the draft and confirmed deletion. The screen shows “Draft deleted.”",
+    "startPath": "dev.e2e.benchmark / Error Recovery",
+    "endPath": "dev.e2e.benchmark / Error Recovery",
     "endAnchors": [
-      {
-        "role": "other",
-        "name": "Draft deleted"
-      },
       {
         "role": "text",
         "name": "Draft deleted",
         "testId": "success-message"
       }
     ],
-    "endWaitMs": 10891
+    "goneAnchors": [
+      {
+        "role": "status",
+        "name": "In progress",
+        "value": "1"
+      },
+      {
+        "role": "text",
+        "name": "Loading drafts…"
+      },
+      {
+        "role": "other",
+        "name": "In progress",
+        "testId": "loading-indicator"
+      }
+    ],
+    "endWaitMs": 11737
   }
 }
